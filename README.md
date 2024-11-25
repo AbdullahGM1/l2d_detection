@@ -24,7 +24,6 @@ This ROS2 package provides a robust solution for converting point cloud data int
 <p align="center">
 </p>
 
-
 <p align="center">
   <img src="images/1.png" alt="Depth Map Detection 1" width="500"/>
   <img src="images/2.png" alt="Depth Map representing highlighting the depths of detected objects 2" width="500"/>
@@ -38,9 +37,9 @@ This ROS2 package provides a robust solution for converting point cloud data int
 
 ## Features
 
-- **Depth Map Generation**: Converts the lidar point clouds to depth maps.  
-- **3D Position Estimation**: Calculates the average (x, y, z) of point clouds within object bounding boxes to estimate 3D positions.
-- **Interactive Visualization**: Offers real-time visual feedback by projecting lidar points of the detected objects onto camera images, enhancing the visual assessment of alignment and accuracy in the sensor fusion process.
+- **Original Depth Map Generation**: Converts the lidar point clouds to depth maps representing the entire scene.
+- **Object-specific Depth Map**: Isolates and enhances depth data specifically for detected objects, based on YOLOv8 outputs.
+- **3D Position Estimation**: Calculates and publishes the average pose of detected objects based on depth data.
 - **Detected Object Point Cloud Streaming**: Publishes the points within bounding boxes (BB) as distinct point clouds for each detected object.
 - **Multi-Object Detection and Localization**: Simultaneously detects and estimates positions for multiple detected objects in real-time.
 - **ROS2 Integration**: Fully compatible with ROS2 for seamless integration in robotics applications.
@@ -63,13 +62,13 @@ sudo apt-get install libpcl-dev libopencv-dev
 ### Clone the Repository
 ```bash
 cd ~/ros2_ws/src
-git clone https://github.com/AbdullahGM1/ros2_lidar_camera_fusion_with_detection_cpp.git
+git clone https://github.com/AbdullahGM1/ros2_depth_map_detection_localization_cpp.git
 ```
 ### Build the Package:
 Navigate back to your ROS2 workspace root and use ``colcon`` to build the package:
 ```bash
 cd ~/ros2_ws
-colcon build --packages-select ros2_lidar_camera_fusion_with_detection_cpp
+colcon build --packages-select ros2_depth_map_detection_localization_cpp
 ```
 ### Source the setup files:
 To make the ROS2 package available in your environment, source the setup file::
@@ -79,11 +78,6 @@ source install/setup.bash
 ---
 
 ## Usage
-
-The package contains two ``launch`` files:
-
-- The first ``lidar_camera_fusion.launch.py`` is to run just ``lidar_camera_fusion_with_detection`` node.
-- The second ``lidar_camera_fusion_yolo.launch.py`` is to run just ``lidar_camera_fusion_with_detection`` and ``yolo_ros`` nodes.
 
 ### Modifying the the Launch File
 Before running the package, make sure to modify the `launch` files located in the `ros2_lidar_camera_fusion_with_detection_cpp/launch` directory to match your setup:
