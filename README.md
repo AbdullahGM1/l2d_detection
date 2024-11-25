@@ -80,31 +80,24 @@ source install/setup.bash
 ## Usage
 
 ### Modifying the the Launch File
-Before running the package, make sure to modify the `launch` files located in the `ros2_lidar_camera_fusion_with_detection_cpp/launch` directory to match your setup:
+Before running the package, make sure to modify the `launch` files located in the `ros2_depth_map_detection_localization_cpp/launch` directory to match your setup:
 
-1. **Set the min and max values**: Set the `Minimum` and `Maximum` values of the depth range for the Lidar point cloud. The depth is in `x-axis`.
+1. **Set the Depth Map Parameters**: Set the `width`, `height` and the `scale` values of the depth map.
    Example:
 ```python
-parameters=[
-    {'min_depth': 0.2, 'max_depth': 10.0, # Setup your min and max depth range, where (x-axis) is the depth
+ 'width': 650, 'height': 650, 'scale': 50, 
 ```
-2. **Set the source and target frames**: Set the `source` frame and the `target` frame of the sensors to get the transformation matrix between these two frames. In this case, the `source` frame is the `lidar` and the `target` is the `camera` frame. 
+2. **Set the max and mini frames**: Set the zzzzzz. 
    Example:
 ```python
-'lidar_frame': 'source/frame/name',  # Default source frame
-'camera_frame': 'target/frame/name'}  # Default target frame
+'min_depth': 0.2, 'max_depth': 30.0
 ```
-3. **Set the Topic Names**: Set the `topics` names that the node needs to do the lidar/camera fusion. 
+3. **Set the Topic Names**: Set the `topics` names that the node needs to generate the depth map and estimate the object pose. 
    Example:
 ```python
-],
 remappings=[
-# Replace with actual topic names
-            ('/scan/points', '/lidar/topic/name'), # The lidar point cloud topic
-            ('/interceptor/gimbal_camera_info', '/camerainfo/topic/name'),# The camera info topic
-            ('/interceptor/gimbal_camera', '/camera/topic/name'), # The camera image topic 
-            ('/yolo/tracking', '/yolo/tracking/topic/name') # The YOLO BB tracking topic
-        ]
+            ('/scan/points', '/scan/points'),  # The lidar point cloud topic
+            ('/yolo/tracking', '/yolo/tracking')  # The YOLOv8 tracking topic
 ```
 4. **Set the Yolo Parameters**: Set the `yolo_ros` package arguments for the `model`, `input_image_topic`, and `threshold`. 
    Example:
@@ -120,7 +113,7 @@ remappings=[
 After modifying the `launch` file, build your package:
 ```bash
 cd ~/ros2_ws
-colcon build --packages-select ros2_lidar_camera_fusion_with_detection_cpp
+colcon build --packages-select ros2_depth_map_detection_localization_cpp
 ```
 ### Source the Workspace
 Before running the package, ensure you source the workspace to have access to the built packages:
@@ -133,14 +126,8 @@ source ~/ros2_ws/install/setup.bash
 ### Run the Node
 To run the package:
 ```bash
-ros2 launch ros2_lidar_camera_fusion_with_detection_cpp lidar_camera_fusion.launch.py
+ros2 launch ros2_depth_map_detection_localization_cpp depth_map_detection_localization_yolo.launch.py
 ```
-Or 
-
-```bash
-ros2 launch ros2_lidar_camera_fusion_with_detection_cpp lidar_camera_fusion_yolo.launch.py
-```
-
 ---
 ## Node
 
