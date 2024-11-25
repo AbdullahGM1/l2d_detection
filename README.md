@@ -18,7 +18,7 @@ This ROS2 package provides a robust solution for converting point cloud data int
 ---
 ## Demonstration
 
-### Depth Map Detection and Localizationin in Action
+### Depth Map Detection and Localization in in Action
 
 
 <p align="center">
@@ -79,33 +79,33 @@ source install/setup.bash
 
 ## Usage
 
-### Modifying the the Launch File
+### Modifying the Launch File
 Before running the package, make sure to modify the `launch` files located in the `ros2_depth_map_detection_localization_cpp/launch` directory to match your setup:
 
-1. **Set the Depth Map Parameters**: Set the `width`, `height` and the `scale` values of the depth map.
+1. **Set the Depth Map Parameters**: Set the `width`, `height`, and the `scale` values of the depth map.
    Example:
 ```python
  'width': 650, 'height': 650, 'scale': 50, 
 ```
-2. **Set the max and mini frames**: Set the zzzzzz. 
+2. **Set the max and mini frames**: Set the maximum and minimum for the point cloud range. `x-axis` is the depth axis.  
    Example:
 ```python
 'min_depth': 0.2, 'max_depth': 30.0
 ```
-3. **Set the Topic Names**: Set the `topics` names that the node needs to generate the depth map and estimate the object pose. 
+3. **Set the Topic Names**: Set the `topics` names the node needs to generate the depth map and estimate the object pose. 
    Example:
 ```python
 remappings=[
-            ('/scan/points', '/scan/points'),  # The lidar point cloud topic
-            ('/yolo/tracking', '/yolo/tracking')  # The YOLOv8 tracking topic
+            ('/scan/points', '/change/it/to/your/topic'),  # The lidar point cloud topic
+            ('/yolo/tracking', '/change/it/to/your/topic')  # The YOLOv8 tracking topic
 ```
-4. **Set the Yolo Parameters**: Set the `yolo_ros` package arguments for the `model`, `input_image_topic`, and `threshold`. 
+4. **Set the Yolo Parameters**: Set the `yolo_ros` package arguments for the `model`, and `threshold`. Don't change the `input_image_topic` 
    Example:
 ```python
         launch_arguments={
             'model': '/home/user/shared_volume/ros2_ws/src/d2dtracker_drone_detector/config/yolo11s.pt',
             'threshold': '0.5',
-            'input_image_topic': '/interceptor/gimbal_camera',
+            'input_image_topic': '/depth_map', 
             'device': 'cuda:0'
         }.items()
 ```
@@ -128,32 +128,6 @@ To run the package:
 ```bash
 ros2 launch ros2_depth_map_detection_localization_cpp depth_map_detection_localization_yolo.launch.py
 ```
----
-## Node
-
-### `lidar_camera_fusion_node`
-
-This node fuses lidar point cloud data onto the camera image frame and overlays the points within detected object bounding boxes onto the image. Also, publishing the points within the bounding box as point cloud points.
-
-#### Subscribed Topics:
-
--**`/scan/points`**: Lidar point cloud data.
-
--**`/interceptor/gimbal_camera`**: Camera image output.
-
--**`/interceptor/gimbal_camera_info`**: Camera info for the Camera Intrinsic.
-
--**`/yolo/tracking`**: Detected objects with bounding boxes.
-
-
-#### Published Topics:
-
--**`/image_lidar`**: Image with projected Lidar points.
-
--**`/detected_object_distance`**: Average distance from the detected objects to the camera frame.
-
--**`/detected_object_pointcloud`**: Points inside the bounding boxes are published as point cloud points.
-
 ---
 ## Contributing
 
