@@ -1,2 +1,2 @@
 # ros2_depth_map_detection_localization
-Ros2 Package for Object Detection &amp; Localization in Depth Map
+Using PCL to Convert Point Cloud Data into a Depth Map for Object Detection and Localization
