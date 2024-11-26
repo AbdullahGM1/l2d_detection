@@ -1,13 +1,10 @@
-# ROS2 Depth Map Detection and Localization Package
-Using PCL to Convert Point Cloud Data into a Depth Map for Object Detection and Localization
+# 🤖 ROS2 Depth Map Detection and Localization Package
 
-## Description
+## 📝 Description
 
 This ROS2 package provides a robust solution for converting point cloud data into depth maps, integrating advanced detection capabilities with YOLO to detect objects within the depth map. The package generates two types of depth maps: one representing the original scene and another highlighting the depths of detected objects. Additionally, it publishes pose data (x,y,z) for detected objects, aiding in accurate object localization in 3D space.
 
----
-
-## Table of Contents
+## 📋 Table of Contents
 1. [Demonstration](#demonstration)
 2. [Features](#features)
 3. [Installation](#installation)
@@ -15,14 +12,9 @@ This ROS2 package provides a robust solution for converting point cloud data int
 5. [Node](#node)
 6. [Contributing](#contributing)
 
----
-## Demonstration
+## 🎥 Demonstration
 
-### Depth Map Detection and Localization in in Action
-
-
-<p align="center">
-</p>
+### 📸 Depth Map Detection and Localization in Action
 
 <p align="center">
   <img src="images/1.png" alt="Depth Map Detection 1" width="500"/>
@@ -33,102 +25,92 @@ This ROS2 package provides a robust solution for converting point cloud data int
   <img src="images/3.gif" alt="Depth Map representing highlighting the depths of detected objects and pose gif" width="500"/>
 </p>
 
----
+## ✨ Features
 
-## Features
+- **Original Depth Map Generation**: Converts the lidar point clouds to depth maps representing the entire scene
+- **Object-specific Depth Map**: Isolates and enhances depth data specifically for detected objects, based on YOLOv8 outputs
+- **3D Position Estimation**: Calculates and publishes the average pose of detected objects based on depth data
+- **Detected Object Point Cloud Streaming**: Publishes points within bounding boxes as distinct point clouds
+- **Multi-Object Detection and Localization**: Simultaneously detects and estimates positions for multiple objects in real-time
+- **ROS2 Integration**: Seamless compatibility with ROS2 robotics ecosystem
 
-- **Original Depth Map Generation**: Converts the lidar point clouds to depth maps representing the entire scene.
-- **Object-specific Depth Map**: Isolates and enhances depth data specifically for detected objects, based on YOLOv8 outputs.
-- **3D Position Estimation**: Calculates and publishes the average pose of detected objects based on depth data.
-- **Detected Object Point Cloud Streaming**: Publishes the points within bounding boxes (BB) as distinct point clouds for each detected object.
-- **Multi-Object Detection and Localization**: Simultaneously detects and estimates positions for multiple detected objects in real-time.
-- **ROS2 Integration**: Fully compatible with ROS2 for seamless integration in robotics applications.
----
+## 🛠️ Installation
 
-## Installation
+### 📋 Prerequisites
+- **🤖 ROS2 Humble**: [Installation Guide](https://docs.ros.org/en/humble/Installation.html)
+- **🕵️ YOLOvX ROS**: [Setup Instructions](https://github.com/mgonzs13/yolov8_ros)
+- **💻 C++ Compiler**: GCC 8 or newer
+- **📚 Required Libraries**: PCL, OpenCV, and other ROS2 dependencies
 
-### Prerequisites
-- **ROS2 Humble**: Ensure you have ROS2 Humble installed on your machine. [Installation Guide](https://docs.ros.org/en/humble/Installation.html)
-- **yolovX_ros**: Follow the instructions to set up YOLOvX in ROS2 for object detection. [Installation Guide](https://github.com/mgonzs13/yolov8_ros)
-- **C++ compiler (GCC 8 or newer).**
-- **PCL (Point Cloud Library), OpenCV, and other ROS2 dependencies.**
-
-### Install Dependencies:
-Install the necessary dependencies using the following command:
+### 📦 Install Dependencies
 ```bash
 sudo apt-get update
 sudo apt-get install libpcl-dev libopencv-dev
 ```
-### Clone the Repository
+
+### 📂 Clone the Repository
 ```bash
 cd ~/ros2_ws/src
 git clone https://github.com/AbdullahGM1/ros2_depth_map_detection_localization_cpp.git
 ```
-### Build the Package:
-Navigate back to your ROS2 workspace root and use ``colcon`` to build the package:
+
+### 🏗️ Build the Package
 ```bash
 cd ~/ros2_ws
 colcon build --packages-select ros2_depth_map_detection_localization_cpp
-```
-### Source the setup files:
-To make the ROS2 package available in your environment, source the setup file::
-```bash
 source install/setup.bash
 ```
----
 
-## Usage
+## 🚀 Usage
 
-### Modifying the Launch File
-Before running the package, make sure to modify the `launch` files located in the `ros2_depth_map_detection_localization_cpp/launch` directory to match your setup:
+### ⚙️ Modifying the Launch File
 
-1. **Set the Depth Map Parameters**: Set the `width`, `height`, and the `scale` values of the depth map.
-   Example:
+Before running the package, modify the launch files in `ros2_depth_map_detection_localization_cpp/launch`:
+
+1. **🖼️ Depth Map Parameters**:
 ```python
- 'width': 650, 'height': 650, 'scale': 50, 
+'width': 650, 'height': 650, 'scale': 50, 
 ```
-2. **Set the max and mini frames**: Set the maximum and minimum for the point cloud range. `x-axis` is the depth axis.  
-   Example:
+
+2. **📏 Point Cloud Range**:
 ```python
 'min_depth': 0.2, 'max_depth': 30.0
 ```
-3. **Set the Topic Names**: Set the `topics` names the node needs to generate the depth map and estimate the object pose. 
-   Example:
+
+3. **🔗 Topic Names**:
 ```python
 remappings=[
-            ('/scan/points', '/change/it/to/your/topic'),  # The lidar point cloud topic
-            ('/yolo/tracking', '/change/it/to/your/topic')  # The YOLOv8 tracking topic
+    ('/scan/points', '/change/it/to/your/topic'),  # Lidar point cloud topic
+    ('/yolo/tracking', '/change/it/to/your/topic')  # YOLOv8 tracking topic
+]
 ```
-4. **Set the Yolo Parameters**: Set the `yolo_ros` package arguments for the `model`, and `threshold`. Don't change the `input_image_topic` 
-   Example:
+
+4. **🎯 YOLO Parameters**:
 ```python
-        launch_arguments={
-            'model': '/home/user/shared_volume/ros2_ws/src/d2dtracker_drone_detector/config/yolo11s.pt',
-            'threshold': '0.5',
-            'input_image_topic': '/depth_map', 
-            'device': 'cuda:0'
-        }.items()
+launch_arguments={
+    'model': '/path/to/model.pt',
+    'threshold': '0.5',
+    'input_image_topic': '/depth_map', 
+    'device': 'cuda:0'
+}.items()
 ```
-### Build the Package
-After modifying the `launch` file, build your package:
+
+### 🔨 Build the Package
 ```bash
 cd ~/ros2_ws
 colcon build --packages-select ros2_depth_map_detection_localization_cpp
 ```
-### Source the Workspace
-Before running the package, ensure you source the workspace to have access to the built packages:
 
-For **Bash**:
-```bash
-source ~/ros2_ws/install/setup.bash
-```
-
-### Run the Node
-To run the package:
+### 🏃 Run the Node
 ```bash
 ros2 launch ros2_depth_map_detection_localization_cpp depth_map_detection_localization_yolo.launch.py
 ```
----
-## Contributing
 
-Feel free to contribute to this project by creating pull requests or opening issues.
+## 🤝 Contributing
+
+Feel free to contribute to this project by creating pull requests or opening issues! 🌟 Your input is welcome and appreciated! 💡
+
+## 🔬 Additional Notes
+- Always ensure your sensor configurations match the launch file parameters
+- Check ROS2 and YOLO setup before running the package
+- Optimize model and detection thresholds for your specific use case
