@@ -60,7 +60,7 @@ private:
                 continue; // Skip this detection and proceed with the next
             }
 
-            // Assuming detection.bbox provides center.x, center.y, size.x, size.y
+            // Calaculating the BB Dimensions detection.bbox provides center.x, center.y, size.x, size.y
             bbox.x_min = detection.bbox.center.position.x - detection.bbox.size.x / 2.0;
             bbox.y_min = detection.bbox.center.position.y - detection.bbox.size.y / 2.0;
             bbox.x_max = detection.bbox.center.position.x + detection.bbox.size.x / 2.0;
@@ -111,7 +111,7 @@ private:
             float y = point.y;
             float z = point.z;
 
-            // Map y and z to pixel coordinates
+            // Map x and y to pixel coordinates
             int pixel_x = static_cast<int>(center_x + x * scale_);
             int pixel_y = static_cast<int>(center_y - y * scale_);
 
