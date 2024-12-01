@@ -28,7 +28,7 @@ def generate_launch_description():
             ])
         ]),
         launch_arguments={
-            'model': '/home/user/shared_volume/ros2_ws/src/d2dtracker_drone_detector/config/best.pt',  # Adjust path to your YOLOv8 model
+            'model': '/home/user/shared_volume/ros2_ws/src/d2dtracker_drone_detector/config/depth_map_drone_detection.pt',  # Adjust path to your YOLOv8 model
             'threshold': '0.5',
             'input_image_topic': '/depth_map',  
             'namespace': 'depth_map',  
