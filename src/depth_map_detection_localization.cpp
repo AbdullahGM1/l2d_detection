@@ -88,7 +88,7 @@ private:
         pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud(new pcl::PointCloud<pcl::PointXYZ>);
         pcl::PassThrough<pcl::PointXYZ> pass;
         pass.setInputCloud(pcl_cloud);
-        pass.setFilterFieldName("z");
+        pass.setFilterFieldName("x");
         pass.setFilterLimits(MinDepth, MaxDepth);
         pass.filter(*filtered_cloud);
 
