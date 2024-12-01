@@ -112,8 +112,11 @@ private:
             float z = point.z;
 
             // Map x and y to pixel coordinates
-            int pixel_x = static_cast<int>(center_x + x * scale_);
-            int pixel_y = static_cast<int>(center_y - y * scale_);
+            // int pixel_x = static_cast<int>(center_x + x * scale_);
+            // int pixel_y = static_cast<int>(center_y - y * scale_);
+            // Map x and y to pixel coordinates
+            int pixel_x = center_x + static_cast<int>(ceil(y * scale_) * -1);
+            int pixel_y = center_y + static_cast<int>(ceil(x * scale_) * -1);
 
             // Check if the pixel is within image bounds
             if (pixel_x >= 0 && pixel_x < width_ && pixel_y >= 0 && pixel_y < height_)
