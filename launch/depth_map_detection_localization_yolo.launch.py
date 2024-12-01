@@ -31,6 +31,7 @@ def generate_launch_description():
             'model': '/home/user/shared_volume/ros2_ws/src/d2dtracker_drone_detector/config/best.pt',  # Adjust path to your YOLOv8 model
             'threshold': '0.5',
             'input_image_topic': '/depth_map',  
+            'namespace': 'depth_map',  
             'device': 'cuda:0'
         }.items()
     )

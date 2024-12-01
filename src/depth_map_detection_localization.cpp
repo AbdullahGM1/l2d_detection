@@ -24,7 +24,7 @@ public:
 
         // Subscriber for bounding box messages
         bbox_subscription_ = this->create_subscription<yolov8_msgs::msg::DetectionArray>(
-            "/yolo/tracking", 10, std::bind(&PointCloudToDepthMap::bbox_callback, this, std::placeholders::_1));
+            "/depth_map/tracking", 10, std::bind(&PointCloudToDepthMap::bbox_callback, this, std::placeholders::_1));
         
         // Publisher for original depth map
         original_publisher_ = this->create_publisher<sensor_msgs::msg::Image>("/depth_map", 10);
