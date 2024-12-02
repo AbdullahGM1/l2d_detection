@@ -75,6 +75,29 @@ private:
         }
     }
 
+    void filter_point_cloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr &input_cloud,
+                        pcl::PointCloud<pcl::PointXYZ>::Ptr &output_cloud,
+                        const std::string &field_name,
+                        const std::vector<std::pair<float, float>> &limits) {
+    pcl::IndicesPtr indices(new std::vector<int>);
+    pcl::PassThrough<pcl::PointXYZ> pass;
+    for (const auto &limit : limits) {
+        pcl::IndicesPtr temp_indices(new std::vector<int>);
+        pass.setInputCloud(input_cloud);
+        pass.setFilterFieldName(field_name);
+        pass.setFilterLimits(limit.first, limit.second);
+        pass.filter(*temp_indices);
+
+        indices->insert(indices->end(), temp_indices->begin(), temp_indices->end());
+    }
+
+    pcl::ExtractIndices<pcl::PointXYZ> extract;
+    extract.setInputCloud(input_cloud);
+    extract.setIndices(indices);
+    extract.filter(*output_cloud);
+    }
+
+
     void point_cloud_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
     {
         // Convert ROS PointCloud2 to PCL PointCloud
@@ -85,13 +108,27 @@ private:
         cv::Mat original_depth_map_single = cv::Mat::zeros(height_, width_, CV_8UC1);
         cv::Mat detected_object_depth_map_single = cv::Mat::zeros(height_, width_, CV_8UC1);
 
-        // Apply filtering to remove far-away points
-        pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-        pcl::PassThrough<pcl::PointXYZ> pass;
-        pass.setInputCloud(pcl_cloud);
-        pass.setFilterFieldName("x");
-        pass.setFilterLimits(MinDepth, MaxDepth);
-        pass.filter(*filtered_cloud);
+        // Filtered cloud using improved filtering
+        pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud(new pcl::PointCloud<pcl::PointXYZ>());
+        std::vector<std::pair<float, float>> x_limits{{-MaxDepth, -MinDepth}, {MinDepth, MaxDepth}};
+        std::vector<std::pair<float, float>> y_limits{{-MaxDepth, -MinDepth}, {MinDepth, MaxDepth}};
+        std::vector<std::pair<float, float>> z_limits{{-MaxDepth, -MinDepth}, {MinDepth, MaxDepth}};
+        
+
+        // Apply filters to all axes
+        filter_point_cloud(pcl_cloud, filtered_cloud, "x", x_limits);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr intermediate_cloud(new pcl::PointCloud<pcl::PointXYZ>());
+        filter_point_cloud(filtered_cloud, intermediate_cloud, "y", y_limits);
+        filtered_cloud->clear();
+        filter_point_cloud(intermediate_cloud, filtered_cloud, "z", z_limits);
+
+        // // Apply filtering to remove far-away points
+        // pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+        // pcl::PassThrough<pcl::PointXYZ> pass;
+        // pass.setInputCloud(pcl_cloud);
+        // pass.setFilterFieldName("x");
+        // pass.setFilterLimits(MinDepth, MaxDepth);
+        // pass.filter(*filtered_cloud);
 
         // Reset bounding box point accumulation
         for (auto& bbox : bounding_boxes) {
