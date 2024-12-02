@@ -16,7 +16,7 @@ def generate_launch_description():
         ],
         remappings=[
             ('/scan/points', '/scan/points'),  # The lidar point cloud topic
-            ('/yolo/tracking', '/yolo/tracking')  # The YOLOv8 tracking topic
+            ('/depth_map/tracking', '/depth_map/tracking')  # The YOLOv8 tracking topic
         ]
     )
 
