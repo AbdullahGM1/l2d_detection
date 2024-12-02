@@ -15,8 +15,8 @@ def generate_launch_description():
              'MinDepth': 0.2, 'MaxDepth': 30.0}  # Setup your parameters as needed
         ],
         remappings=[
-            ('/scan/points', '/scan/points'),  # The lidar point cloud topic
-            ('/depth_map/tracking', '/depth_map/tracking')  # The YOLOv8 tracking topic
+            ('/scan/points', '/scan/points'),  # The lidar point cloud topic - replace the second topic to your topic
+            ('/depth_map/tracking', '/depth_map/tracking')  # The YOLOv8 tracking topic replace the second topic to your topic
         ]
     )
 
