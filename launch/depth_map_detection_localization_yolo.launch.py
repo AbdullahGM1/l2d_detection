@@ -11,8 +11,8 @@ def generate_launch_description():
         executable='depth_map_detection_localization',  
         name='depth_map_detection_localization',
         parameters=[
-            {'width': 650, 'height': 650, 'scale': 50, 
-             'min_depth': 0.2, 'max_depth': 30.0}  # Setup your parameters as needed
+            {'width_': 650, 'height_': 650, 'scale_': 50, 
+             'MinDepth': 0.2, 'MaxDepth': 30.0}  # Setup your parameters as needed
         ],
         remappings=[
             ('/scan/points', '/scan/points'),  # The lidar point cloud topic
