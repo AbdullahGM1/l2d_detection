@@ -17,8 +17,27 @@ class PointCloudToDepthMap : public rclcpp::Node
 {
 public:
     PointCloudToDepthMap()
-        : Node("point_cloud_to_depth_map"), width_(650), height_(650), scale_(50), MinDepth(0.2f), MaxDepth(30.0f)
+        : Node("point_cloud_to_depth_map")
     {
+        // Declare parameters with default values
+        this->declare_parameter<int>("width", 650);
+        this->declare_parameter<int>("height", 650);
+        this->declare_parameter<float>("scale", 50.0);
+        this->declare_parameter<float>("MinDepth", 0.2f);
+        this->declare_parameter<float>("MaxDepth", 30.0f);
+
+         // Fetch parameters
+        this->get_parameter("width", width_);
+        this->get_parameter("height", height_);
+        this->get_parameter("scale", scale_);
+        this->get_parameter("MinDepth", MinDepth_);
+        this->get_parameter("MaxDepth", MaxDepth_);
+
+        // Log parameters
+        RCLCPP_INFO(this->get_logger(), "Loaded Parameters: width=%d, height=%d, scale=%f, MinDepth=%f, MaxDepth=%f",
+                    width_, height_, scale_, MinDepth_, MaxDepth_);
+        
+    
         // Subscriber for PointCloud2 messages
         subscription_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
             "/scan/points", 10, std::bind(&PointCloudToDepthMap::point_cloud_callback, this, std::placeholders::_1));
@@ -40,6 +59,7 @@ public:
     }
 
 private:
+
     struct BoundingBox {
         double x_min, y_min, x_max, y_max;
         double sum_x = 0, sum_y = 0, sum_z = 0;  // Sum of coordinates
@@ -90,7 +110,7 @@ private:
         pcl::PassThrough<pcl::PointXYZ> pass;
         pass.setInputCloud(pcl_cloud);
         pass.setFilterFieldName("z");
-        pass.setFilterLimits(MinDepth, MaxDepth);
+        pass.setFilterLimits(MinDepth_, MaxDepth_);
         pass.filter(*filtered_cloud);
 
         // Reset bounding box point accumulation
@@ -123,7 +143,7 @@ private:
             if (pixel_x >= 0 && pixel_x < width_ && pixel_y >= 0 && pixel_y < height_)
             {
                 // Normalize depth value (x) to 0-255
-                int depth_value = std::clamp(static_cast<int>(z * 255 / MaxDepth), 0, 255);
+                int depth_value = std::clamp(static_cast<int>(z * 255 / MaxDepth_), 0, 255);
                 
                 // Original depth map for all points
                 original_depth_map_single.at<uint8_t>(pixel_y, pixel_x) = 255 - depth_value;
@@ -198,13 +218,14 @@ private:
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr original_publisher_;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr detected_object_publisher_;
     rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr detected_object_pose_publisher_;
+    rclcpp::TimerBase::SharedPtr timer_;
 
     std::vector<BoundingBox> bounding_boxes;
     int width_;
     int height_;
     float scale_;
-    float MinDepth;
-    float MaxDepth;
+    float MinDepth_;
+    float MaxDepth_;
 };
 
 int main(int argc, char *argv[])

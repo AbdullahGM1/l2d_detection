@@ -6,17 +6,18 @@ from launch_ros.substitutions import FindPackageShare
 from launch_ros.actions import Node
 
 def generate_launch_description():
+
     depth_map_detection_localization_node = Node(
         package='ros2_depth_map_detection_localization_cpp',  
         executable='depth_map_detection_localization',  
-        name='depth_map_detection_localization',
+        name='point_cloud_to_depth_map',  # Update to match the node's name in the code
         parameters=[
-            {'width_': 650, 'height_': 650, 'scale_': 50, 
-             'MinDepth': 0.2, 'MaxDepth': 30.0}  # Setup your parameters as needed
+            {'width': 250, 'height': 650, 'scale': 50.0, 
+            'MinDepth': 0.2, 'MaxDepth': 30.0} 
         ],
         remappings=[
-            ('/scan/points', '/scan/points'),  # The lidar point cloud topic - replace the second topic to your topic
-            ('/depth_map/tracking', '/depth_map/tracking')  # The YOLOv8 tracking topic replace the second topic to your topic
+            ('/scan/points', '/scan/points'),  
+            ('/depth_map/tracking', '/depth_map/tracking')  
         ]
     )
 
@@ -24,14 +25,14 @@ def generate_launch_description():
         PythonLaunchDescriptionSource([
             PathJoinSubstitution([
                 FindPackageShare('yolov8_bringup'),
-                'launch/yolov8.launch.py'  
+                'launch/yolov8.launch.py'
             ])
         ]),
         launch_arguments={
-            'model': '/home/user/shared_volume/ros2_ws/src/d2dtracker_drone_detector/config/depth_map_drone_detection.pt',  # Adjust path to your YOLOv8 model
+            'model': '/home/user/shared_volume/ros2_ws/src/d2dtracker_drone_detector/config/depth_map_drone_detection.pt',  # Path to your YOLOv8 model
             'threshold': '0.5',
-            'input_image_topic': '/depth_map',  
-            'namespace': 'depth_map',  
+            'input_image_topic': '/depth_map',
+            'namespace': 'depth_map',
             'device': 'cuda:0'
         }.items()
     )
