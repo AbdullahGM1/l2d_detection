@@ -12,6 +12,10 @@
 #include <vector>
 #include <stdexcept>
 #include "pcl/filters/extract_indices.h"
+#include "message_filters/subscriber.h"
+#include "message_filters/subscriber.h"
+#include "message_filters/sync_policies/approximate_time.h"
+#include "message_filters/synchronizer.h"
 
 class PointCloudToDepthMap : public rclcpp::Node
 {
@@ -36,15 +40,12 @@ public:
         // Log parameters
         RCLCPP_INFO(this->get_logger(), "Loaded Parameters: width=%d, height=%d, scale=%f, MinDepth=%f, MaxDepth=%f",
                     width_, height_, scale_, MinDepth_, MaxDepth_);
-        
     
         // Subscriber for PointCloud2 messages
-        subscription_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
-            "/scan/points", 10, std::bind(&PointCloudToDepthMap::point_cloud_callback, this, std::placeholders::_1));
+        point_cloud_sub_.subscribe(this, "/scan/points");
 
         // Subscriber for bounding box messages
-        bbox_subscription_ = this->create_subscription<yolov8_msgs::msg::DetectionArray>(
-            "/depth_map/tracking", 10, std::bind(&PointCloudToDepthMap::bbox_callback, this, std::placeholders::_1));
+        bbox_sub_.subscribe(this, "/depth_map/tracking");
         
         // Publisher for original depth map
         original_publisher_ = this->create_publisher<sensor_msgs::msg::Image>("/depth_map", 10);
@@ -55,6 +56,13 @@ public:
         // Publisher for detected object poses
         detected_object_pose_publisher_ = this->create_publisher<geometry_msgs::msg::PoseArray>("/detected_object_depthmap_pose", 10);
         
+        RCLCPP_INFO(this->get_logger(), "PointCloud to Depth Map Node has been started.");
+
+        // Set up approximate time synchronization
+        sync_ = std::make_shared<message_filters::Synchronizer<ApproxSyncPolicy>>(
+            ApproxSyncPolicy(10), point_cloud_sub_, bbox_sub_);
+        sync_->registerCallback(std::bind(&PointCloudToDepthMap::synchronized_callback, this, std::placeholders::_1, std::placeholders::_2));
+
         RCLCPP_INFO(this->get_logger(), "PointCloud to Depth Map Node has been started.");
     }
 
