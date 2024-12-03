@@ -10,7 +10,7 @@ def generate_launch_description():
     depth_map_detection_localization_node = Node(
         package='ros2_depth_map_detection_localization_cpp',  
         executable='depth_map_detection_localization',  
-        name='point_cloud_to_depth_map'
+        name='point_cloud_to_depth_map',
         parameters=[
             {'width': 250, 'height': 650, 'scale': 50.0, 
             'MinDepth': 0.2, 'MaxDepth': 30.0} 
