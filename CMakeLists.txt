@@ -33,6 +33,15 @@ target_link_libraries(depth_map_detection_localization
   ${OpenCV_LIBS} 
 )
 
+# Add executable for the depth map node
+add_executable(depth_map_detection_localization src/depth_map_detection_localization_test.cpp)
+
+# Link libraries
+target_link_libraries(depth_map_detection_localization_test 
+  ${PCL_LIBRARIES} 
+  ${OpenCV_LIBS} 
+)
+
 # Specify dependencies for ROS2 and PCL
 ament_target_dependencies(
   depth_map_detection_localization
