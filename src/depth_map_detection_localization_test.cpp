@@ -40,17 +40,13 @@ public:
         RCLCPP_INFO(this->get_logger(), "Loaded Parameters: width=%d, height=%d, scale=%f, MinDepth=%f, MaxDepth=%f",
                     width_, height_, scale_, MinDepth_, MaxDepth_);
     
-        
- 
         // Subscriber for PointCloud2 messages
         subscription_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
             "/scan/points", 10, std::bind(&PointCloudToDepthMap::point_cloud_callback, this, std::placeholders::_1));
 
-         // Initialize message_filters subscribers \\ Modify this part
-        // point_cloud_sub_.subscribe(this, "/scan/points");
-        // bbox_sub_.subscribe(this, "/depth_map/tracking");       
-        subscriber1_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>(this, "image_topic");
-        subscriber2_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::PointCloud2>>(this, "pointcloud_topic");
+         // Initialize message_filters subscribers 
+        point_cloud_subscriber_ = std::make_shared<Subscriber<sensor_msgs::msg::PointCloud2>>(this, "/scan/points");
+        detection_array_subscriber_ = std::make_shared<Subscriber<yolov8_msgs::msg::DetectionArray>>(this, "/depth_map/tracking");
         
         // Publisher for original depth map
         original_publisher_ = this->create_publisher<sensor_msgs::msg::Image>("/depth_map", 10);
@@ -63,10 +59,12 @@ public:
         
         RCLCPP_INFO(this->get_logger(), "PointCloud to Depth Map Node has been started.");
 
-        //Register the Callback  \\ Modify this part
-        sync_ = std::make_shared<message_filters::TimeSynchronizer<sensor_msgs::msg::Image, sensor_msgs::msg::PointCloud2>>(*subscriber1_, *subscriber2_, 10);
-        sync_->registerCallback(std::bind(&SynchronizedSubscribers::callback, this, _1, _2));
+        // Set up the synchronizer with a queue size of 10 (modify as needed)
+        sync_ = std::make_shared<message_filters::TimeSynchronizer<sensor_msgs::msg::PointCloud2, yolov8_msgs::msg::DetectionArray>>(
+        *point_cloud_subscriber_, *detection_array_subscriber_, 10);
 
+        //Register the Sync_Callback  
+        sync_->registerCallback(std::bind(&DataSynchronizationNode::synchronized_callback, this, _1, _2));
 
         RCLCPP_INFO(this->get_logger(), "PointCloud to Depth Map Node has been started.");
     }
