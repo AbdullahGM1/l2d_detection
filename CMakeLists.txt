@@ -56,7 +56,9 @@ ament_target_dependencies(
 )
 
 # Install the target
-install(TARGETS depth_map_detection_localization
+install(TARGETS
+  depth_map_detection_localization
+  depth_map_detection_localization_test
   DESTINATION lib/${PROJECT_NAME})
   
 # Install launch files
