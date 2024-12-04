@@ -218,7 +218,6 @@ private:
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr original_publisher_;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr detected_object_publisher_;
     rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr detected_object_pose_publisher_;
-    rclcpp::TimerBase::SharedPtr timer_;
 
     std::vector<BoundingBox> bounding_boxes;
     int width_;
