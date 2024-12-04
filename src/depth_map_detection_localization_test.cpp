@@ -13,7 +13,6 @@
 #include <stdexcept>
 #include "pcl/filters/extract_indices.h"
 #include "message_filters/subscriber.h"
-#include "message_filters/subscriber.h"
 #include "message_filters/sync_policies/approximate_time.h"
 #include "message_filters/synchronizer.h"
 
@@ -41,10 +40,10 @@ public:
         RCLCPP_INFO(this->get_logger(), "Loaded Parameters: width=%d, height=%d, scale=%f, MinDepth=%f, MaxDepth=%f",
                     width_, height_, scale_, MinDepth_, MaxDepth_);
     
-        // Subscriber for PointCloud2 messages
-        point_cloud_sub_.subscribe(this, "/scan/points");
 
-        // Subscriber for bounding box messages
+        // Initialize message filter subscribers
+
+        point_cloud_sub_.subscribe(this, "/scan/points");
         bbox_sub_.subscribe(this, "/depth_map/tracking");
         
         // Publisher for original depth map
@@ -67,6 +66,21 @@ public:
     }
 
 private:
+    // Define sync policy (ApproximateTime)
+    using ApproxSyncPolicy = message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::PointCloud2, yolov8_msgs::msg::DetectionArray>;
+
+    // Subscribers
+    message_filters::Subscriber<sensor_msgs::msg::PointCloud2> point_cloud_sub_;
+    message_filters::Subscriber<yolov8_msgs::msg::DetectionArray> bbox_sub_;
+
+            // Callback for synchronized messages
+    void synchronized_callback(
+        const sensor_msgs::msg::PointCloud2::ConstSharedPtr &point_cloud,
+        const yolov8_msgs::msg::DetectionArray::ConstSharedPtr &detection_array)
+    {
+        RCLCPP_INFO(this->get_logger(), "Synchronized messages received!");
+        // Process synchronized messages here
+    }
 
     struct BoundingBox {
         double x_min, y_min, x_max, y_max;
@@ -221,14 +235,14 @@ private:
         detected_object_pose_publisher_->publish(pose_array);
     }
 
-    rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr subscription_;
-    rclcpp::Subscription<yolov8_msgs::msg::DetectionArray>::SharedPtr bbox_subscription_;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr original_publisher_;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr detected_object_publisher_;
     rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr detected_object_pose_publisher_;
     rclcpp::TimerBase::SharedPtr timer_;
 
     std::vector<BoundingBox> bounding_boxes;
+    std::shared_ptr<message_filters::Synchronizer<ApproxSyncPolicy>> sync_;
+    
     int width_;
     int height_;
     float scale_;
