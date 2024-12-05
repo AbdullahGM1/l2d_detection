@@ -16,6 +16,8 @@
 #include "message_filters/sync_policies/approximate_time.h"
 #include "message_filters/synchronizer.h"
 
+using namespace message_filters;
+
 class PointCloudToDepthMap : public rclcpp::Node
 {
 public:
@@ -45,9 +47,9 @@ public:
             "/scan/points", 10, std::bind(&PointCloudToDepthMap::point_cloud_callback, this, std::placeholders::_1));
 
          // Initialize message_filters subscribers 
-        point_cloud_subscriber_ = std::make_shared<Subscriber<sensor_msgs::msg::PointCloud2>>(this, "/scan/points");
-        detection_array_subscriber_ = std::make_shared<Subscriber<yolov8_msgs::msg::DetectionArray>>(this, "/depth_map/tracking");
-        
+        auto point_cloud_sub_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::PointCloud2>>(this, "/scan/points");
+        auto detection_array_sub_ = std::make_shared<message_filters::Subscriber<yolov8_msgs::msg::DetectionArray>>(this, "/depth_map/tracking");
+
         // Publisher for original depth map
         original_publisher_ = this->create_publisher<sensor_msgs::msg::Image>("/depth_map", 10);
         
@@ -57,14 +59,11 @@ public:
         // Publisher for detected object poses
         detected_object_pose_publisher_ = this->create_publisher<geometry_msgs::msg::PoseArray>("/detected_object_depthmap_pose", 10);
         
-        RCLCPP_INFO(this->get_logger(), "PointCloud to Depth Map Node has been started.");
+        // Set up the synchronizer
+        typedef sync_policies::ApproximateTime<sensor_msgs::msg::PointCloud2, yolov8_msgs::msg::DetectionArray> MySyncPolicy;
+        auto sync_ = std::make_shared<message_filters::Synchronizer<MySyncPolicy>>(MySyncPolicy(10), *point_cloud_sub_, *detection_array_sub_);
+        sync_->registerCallback(&PointCloudToDepthMap::synchronized_callback, this);
 
-        // Set up the synchronizer with a queue size of 10 (modify as needed)
-        sync_ = std::make_shared<message_filters::TimeSynchronizer<sensor_msgs::msg::PointCloud2, yolov8_msgs::msg::DetectionArray>>(
-        *point_cloud_subscriber_, *detection_array_subscriber_, 10);
-
-        //Register the Sync_Callback  
-        sync_->registerCallback(std::bind(&DataSynchronizationNode::synchronized_callback, this, _1, _2));
 
         RCLCPP_INFO(this->get_logger(), "PointCloud to Depth Map Node has been started.");
     }
@@ -109,9 +108,6 @@ private:
             float z = point.z;
 
             // Map x and y to pixel coordinates
-            // int pixel_x = static_cast<int>(center_x + x * scale_);
-            // int pixel_y = static_cast<int>(center_y - y * scale_);
-            // Map x and y to pixel coordinates
             int pixel_x = center_x + static_cast<int>(ceil(y * scale_) * -1);
             int pixel_y = center_y + static_cast<int>(ceil(x * scale_) * -1);
 
@@ -127,7 +123,7 @@ private:
         }
 
         // Convert the single-channel depth maps to 3-channel images
-        cv::Mat original_depth_map, detected_object_depth_map;
+        cv::Mat original_depth_map;
         cv::cvtColor(original_depth_map_single, original_depth_map, cv::COLOR_GRAY2BGR);
 
 
@@ -172,8 +168,6 @@ private:
         }        
     }
     
-
-
     //Declare the publishers
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr original_publisher_;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr detected_object_publisher_;
@@ -181,19 +175,17 @@ private:
 
     //Declare the subscribers
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr subscription_;
-    rclcpp::Subscription<yolov8_msgs::msg::DetectionArray>::SharedPtr bbox_subscription_;
 
     //Declare the Sync Data
     message_filters::Subscriber<sensor_msgs::msg::PointCloud2> point_cloud_sub_;
-    message_filters::Subscriber<yolov8_msgs::msg::DetectionArray> bbox_sub_;
+    message_filters::Subscriber<yolov8_msgs::msg::DetectionArray> detection_array_sub_;
+    std::shared_ptr<message_filters::Synchronizer<message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::PointCloud2, yolov8_msgs::msg::DetectionArray>>> sync_;
+
 
     //Define Parameters
     int width_, height_;
     float scale_, MinDepth_, MaxDepth_;
-
     std::vector<BoundingBox> bounding_boxes;
-    std::shared_ptr<message_filters::Synchronizer<ApproxSyncPolicy>> sync_;
-    
 };
 
 int main(int argc, char *argv[])
