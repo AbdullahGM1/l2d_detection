@@ -18,6 +18,7 @@ find_package(PCL REQUIRED COMPONENTS common io filters)
 find_package(pcl_conversions REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(yolov8_msgs REQUIRED)
+find_package(message_filters REQUIRED)
 
 # Include directories
 include_directories(${PCL_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
@@ -49,6 +50,7 @@ ament_target_dependencies(
   pcl_conversions
   yolov8_msgs
   geometry_msgs
+  message_filters
 )
 
 ament_target_dependencies(
@@ -61,6 +63,7 @@ ament_target_dependencies(
   pcl_conversions
   yolov8_msgs
   geometry_msgs
+  message_filters
 )
 
 # Install the targets
