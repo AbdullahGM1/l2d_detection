@@ -64,6 +64,14 @@ public:
 
 private:
 
+    struct BoundingBox {
+            double x_min, y_min, x_max, y_max;
+            double sum_x = 0, sum_y = 0, sum_z = 0;  // Sum of coordinates
+            int count = 0;  // Number of points within the bounding box
+            bool valid = false;  // Indicates if the bbox is valid
+            int id = -1;  // ID of the bounding box
+    };
+
     void point_cloud_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
     {
         // Convert ROS PointCloud2 to PCL PointCloud
@@ -144,7 +152,6 @@ private:
         // Add your fusion logic here
     }
 
-
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr subscription_;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr original_publisher_;
 
@@ -158,6 +165,8 @@ private:
         yolov8_msgs::msg::DetectionArray>
         SyncPolicy;
     std::shared_ptr<message_filters::Synchronizer<SyncPolicy>> sync_;
+
+    std::vector<BoundingBox> bounding_boxes;
 
     int width_;
     int height_;
