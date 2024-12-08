@@ -16,7 +16,6 @@
 #include "message_filters/sync_policies/approximate_time.h"
 #include "message_filters/time_synchronizer.h"
 
-
 class PointCloudToDepthMap : public rclcpp::Node
 {
 public:
@@ -101,6 +100,16 @@ private:
             int pixel_x = center_x + static_cast<int>(ceil(y * scale_) * -1);
             int pixel_y = center_y + static_cast<int>(ceil(x * scale_) * -1);
 
+            // Check if the pixel is within image bounds
+            if (pixel_x >= 0 && pixel_x < width_ && pixel_y >= 0 && pixel_y < height_)
+            {
+                // Normalize depth value (x) to 0-255
+                int depth_value = std::clamp(static_cast<int>(z * 255 / MaxDepth_), 0, 255);
+                
+                // Original depth map for all points
+                original_depth_map_single.at<uint8_t>(pixel_y, pixel_x) = 255 - depth_value;
+
+             }
         }
 
         // Convert the single-channel depth maps to 3-channel images
