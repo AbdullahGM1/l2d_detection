@@ -207,6 +207,9 @@ private:
         sensor_msgs::msg::Image::SharedPtr detected_object_image_msg = 
             cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", detected_object_depth_map).toImageMsg();
 
+        original_image_msg->header = msg->header;
+        detected_object_image_msg->header = msg->header;
+
         // Publish depth maps and poses
         original_publisher_->publish(*original_image_msg);
         detected_object_publisher_->publish(*detected_object_image_msg);

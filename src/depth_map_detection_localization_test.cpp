@@ -140,32 +140,7 @@ private:
         const sensor_msgs::msg::PointCloud2::ConstSharedPtr &point_cloud,
         const yolov8_msgs::msg::DetectionArray::ConstSharedPtr &detection_array)
     {
-        RCLCPP_INFO(this->get_logger(), "Callback triggered!");
-        if (!point_cloud || !detection_array) {
-            RCLCPP_ERROR(this->get_logger(), "One of the messages is empty!");
-            return;
-        }
-
-        RCLCPP_INFO(this->get_logger(), "Synchronized messages received!");
-            RCLCPP_INFO(this->get_logger(), "Synchronized messages received!");
-
-        // Convert ROS PointCloud2 to PCL PointCloud
-        pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-        pcl::fromROSMsg(*point_cloud, *pcl_cloud);
         
-
-        // Check if the cloud has at least 10 points
-        int num_points = std::min(static_cast<int>(pcl_cloud->points.size()), 10);
-
-        // Print the first 10 or fewer points in the point cloud
-        for (int i = 0; i < num_points; ++i) {
-            const auto& point = pcl_cloud->points[i];
-            RCLCPP_INFO(rclcpp::get_logger("pcl_logger"), "Point %d: (%f, %f, %f)", i, point.x, point.y, point.z);
-        }
-        // Process detections
-        for (const auto& detection : detection_array->detections) {
-            RCLCPP_INFO(this->get_logger(), "Detection ID: %s, Score: %f", detection.id.c_str(), detection.score);
-        }        
     }
     
     //Declare the publishers
