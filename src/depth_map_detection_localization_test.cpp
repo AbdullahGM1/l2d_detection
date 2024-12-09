@@ -70,14 +70,6 @@ public:
 
 private:
 
-    struct BoundingBox {
-            double x_min, y_min, x_max, y_max;
-            double sum_x = 0, sum_y = 0, sum_z = 0;  // Sum of coordinates
-            int count = 0;  // Number of points within the bounding box
-            bool valid = false;  // Indicates if the bbox is valid
-            int id = -1;  // ID of the bounding box
-    };
-
     void point_cloud_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
     {
         // Convert ROS PointCloud2 to PCL PointCloud
@@ -196,7 +188,10 @@ private:
     void sync_callback(const sensor_msgs::msg::PointCloud2::ConstSharedPtr pointcloud_msg,
                   const yolov8_msgs::msg::DetectionArray::ConstSharedPtr detection_msg)
     {
-        RCLCPP_INFO(this->get_logger(), "Received synchronized messages!");
+        // RCLCPP_INFO(this->get_logger(), "Received synchronized messages!");
+
+        geometry_msgs::msg::PoseArray detected_object_poses;
+        detected_object_poses.header = pointcloud_msg->header;
 
         // Convert ROS PointCloud2 to PCL PointCloud
         pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_cloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -272,6 +267,12 @@ private:
             // RCLCPP_INFO(this->get_logger(), "BoundingBox center: x=%f, y=%f",
             //     x_center, y_center);
 
+            // Declare variables before the loop
+            double sum_x = 0.0;  
+            double sum_y = 0.0;  
+            double sum_z = 0.0;  
+            int point_count = 0; 
+
             for (const auto& point : filtered_cloud->points)
             {
                 int pixel_x = x_center + static_cast<int>(ceil(point.y * scale_) * -1);
@@ -287,16 +288,42 @@ private:
                         // RCLCPP_INFO(this->get_logger(), "x_pixel=%d , y_pixel=%d", pixel_x, pixel_y); 
                         //RCLCPP_INFO(this->get_logger(), "x =%f , y =%f ,z=%f", point.x, point.y, point.z); 
 
-                }
-            }    
+                        // Accumulate point coordinates
+                        sum_x += point.x;
+                        sum_y += point.y;
+                        sum_z += point.z;
+                        point_count++;
 
+                }
+            }  
+
+             // Calculate average if points were found
+            if (point_count > 0)
+            {
+                geometry_msgs::msg::Pose object_pose;
+                object_pose.position.x = sum_x / point_count;
+                object_pose.position.y = sum_y / point_count;
+                object_pose.position.z = sum_z / point_count;
+
+                // Optional: Set orientation to identity quaternion
+                object_pose.orientation.x = 0.0;
+                object_pose.orientation.y = 0.0;
+                object_pose.orientation.z = 0.0;
+                object_pose.orientation.w = 1.0;
+
+                detected_object_poses.poses.push_back(object_pose);  
+            }
         }
+
+        detected_object_pose_publisher_->publish(detected_object_poses);
+
     }
 
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr subscription_;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr original_publisher_;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr detected_object_publisher_;
     rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr detected_object_pose_publisher_;
+    
 
     // Message filter subscribers
     message_filters::Subscriber<sensor_msgs::msg::PointCloud2> pointcloud_sub_;
@@ -308,8 +335,6 @@ private:
         yolov8_msgs::msg::DetectionArray>
         SyncPolicy;
     std::shared_ptr<message_filters::Synchronizer<SyncPolicy>> sync_;
-
-    std::vector<BoundingBox> bounding_boxes;
 
     int width_;
     int height_;
