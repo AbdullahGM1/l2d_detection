@@ -285,7 +285,7 @@ private:
                         //Now these points are within the BB
                     
                         // RCLCPP_INFO(this->get_logger(), "x_pixel=%d , y_pixel=%d", pixel_x, pixel_y); 
-                        RCLCPP_INFO(this->get_logger(), "x =%f , y =%f ,z=%f", point.x, point.y, point.z); 
+                        //RCLCPP_INFO(this->get_logger(), "x =%f , y =%f ,z=%f", point.x, point.y, point.z); 
 
                 }
             }    
