@@ -58,6 +58,12 @@ public:
         
         // Publisher for original depth map
         original_publisher_ = this->create_publisher<sensor_msgs::msg::Image>("/depth_map", 10);
+
+        // Publisher for detected object depth map
+        detected_object_publisher_ = this->create_publisher<sensor_msgs::msg::Image>("/detected_object_depth_map", 10);
+        
+        // Publisher for detected object poses
+        detected_object_pose_publisher_ = this->create_publisher<geometry_msgs::msg::PoseArray>("/detected_object_depthmap_pose", 10);
                 
         RCLCPP_INFO(this->get_logger(), "PointCloud to Depth Map Node has been started.");
     }
@@ -139,8 +145,8 @@ private:
         *filtered_cloud = *y_neg_filtered + *y_pos_filtered;
 
         // Optional: Log the number of points before and after filtering
-        RCLCPP_INFO(this->get_logger(), "Original point cloud size: %zu", pcl_cloud->size());
-        RCLCPP_INFO(this->get_logger(), "Filtered point cloud size: %zu", filtered_cloud->size());
+        // RCLCPP_INFO(this->get_logger(), "Original point cloud size: %zu", pcl_cloud->size());
+        // RCLCPP_INFO(this->get_logger(), "Filtered point cloud size: %zu", filtered_cloud->size());
 
         // Define the center of the depth map
         int center_x = width_ / 2;
@@ -196,13 +202,6 @@ private:
     {
         RCLCPP_INFO(this->get_logger(), "Received synchronized messages!");
 
-        // // Example processing: Print the number of detections
-        // RCLCPP_INFO(this->get_logger(), "PointCloud timestamp: sec=%d, nsec=%u",
-        //             pointcloud_msg->header.stamp.sec, pointcloud_msg->header.stamp.nanosec);
-        // RCLCPP_INFO(this->get_logger(), "Detections: %lu", detection_msg->detections.size());
-
-        // Add your fusion logic here
-        
         // Convert ROS PointCloud2 to PCL PointCloud
         pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_cloud(new pcl::PointCloud<pcl::PointXYZ>);
         pcl::fromROSMsg(*pointcloud_msg, *pcl_cloud);
@@ -256,13 +255,45 @@ private:
         *filtered_cloud = *y_neg_filtered + *y_pos_filtered;
 
         // Log the number of points before and after filtering
-        RCLCPP_INFO(this->get_logger(), "Original point cloud size: %zu", pcl_cloud->size());
-        RCLCPP_INFO(this->get_logger(), "Filtered point cloud size: %zu", filtered_cloud->size());
+        // RCLCPP_INFO(this->get_logger(), "Original point cloud size: %zu", pcl_cloud->size());
+        // RCLCPP_INFO(this->get_logger(), "Filtered point cloud size: %zu", filtered_cloud->size());
 
-}
+        for (const auto& bbox : detection_msg->detections)
+        {
+            // Extract the bounding box's center and size
+            double x_center = bbox.bbox.center.position.x;
+            double y_center = bbox.bbox.center.position.y;
+            double width = bbox.bbox.size.x;
+            double height = bbox.bbox.size.y;
+
+            // Calculate the bounding box edges
+            double x_min = x_center - width / 2.0;
+            double x_max = x_center + width / 2.0;
+            double y_min = y_center - height / 2.0;
+            double y_max = y_center + height / 2.0;
+
+            RCLCPP_INFO(this->get_logger(), "Processing BoundingBox: x_min=%f, x_max=%f, y_min=%f, y_max=%f",
+                        x_min, x_max, y_min, y_max);
+
+            // Loop through each point in the filtered point cloud
+            for (const auto& point : filtered_cloud->points)
+            {
+                // Check if the point lies within the bounding box
+                if (point.x >= x_min && point.x <= x_max &&
+                    point.y >= y_min && point.y <= y_max)
+                {
+                    RCLCPP_INFO(this->get_logger(), "Point within bounding box: x=%f, y=%f, z=%f", point.x, point.y, point.z);
+                    
+                    // Add your logic for handling points within the bounding box
+                }
+            }
+        }
+    }
 
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr subscription_;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr original_publisher_;
+    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr detected_object_publisher_;
+    rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr detected_object_pose_publisher_;
 
     // Message filter subscribers
     message_filters::Subscriber<sensor_msgs::msg::PointCloud2> pointcloud_sub_;
