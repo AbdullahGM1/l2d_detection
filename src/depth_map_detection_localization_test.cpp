@@ -183,7 +183,6 @@ private:
         cv::cvtColor(original_depth_map_single, original_depth_map, cv::COLOR_GRAY2BGR);
 
         // Create PoseArray for detected object poses
-        geometry_msgs::msg::PoseArray pose_array;
         pose_array.header = msg->header;
 
         // Convert the depth maps to ROS Image messages
@@ -258,6 +257,12 @@ private:
         // RCLCPP_INFO(this->get_logger(), "Original point cloud size: %zu", pcl_cloud->size());
         // RCLCPP_INFO(this->get_logger(), "Filtered point cloud size: %zu", filtered_cloud->size());
 
+        // Create PoseArray and set its header
+        geometry_msgs::msg::PoseArray pose_array;
+        pose_array.header.stamp = detection_msg->header.stamp;
+        pose_array.header.frame_id = detection_msg->header.frame_id;
+
+        // Loop through each BB
         for (const auto& bbox : detection_msg->detections)
         {
             // Extract the bounding box's center and size
@@ -272,22 +277,31 @@ private:
             double y_min = y_center - height / 2.0;
             double y_max = y_center + height / 2.0;
 
-            RCLCPP_INFO(this->get_logger(), "Processing BoundingBox: x_min=%f, x_max=%f, y_min=%f, y_max=%f",
-                        x_min, x_max, y_min, y_max);
+            RCLCPP_INFO(this->get_logger(), "BoundingBox center: x=%f, y=%f",
+                x_center, y_center);
 
-            // Loop through each point in the filtered point cloud
+            // Initialize variables for summing point values
+            // double sum_x = 0.0, sum_y = 0.0, sum_z = 0.0;
+            // int point_count = 0;
+
             for (const auto& point : filtered_cloud->points)
             {
-                // Check if the point lies within the bounding box
-                if (point.x >= x_min && point.x <= x_max &&
-                    point.y >= y_min && point.y <= y_max)
-                {
-                    RCLCPP_INFO(this->get_logger(), "Point within bounding box: x=%f, y=%f, z=%f", point.x, point.y, point.z);
-                    
-                    // Add your logic for handling points within the bounding box
-                }
+                int pixel_x = x_center + static_cast<int>(ceil(point.y * scale_) * -1);
+                int pixel_y = y_center + static_cast<int>(ceil(point.x * scale_) * -1);
+
+                // RCLCPP_INFO(this->get_logger(), "x_pixel=%d , y_pixel=%d", pixel_x, pixel_y);
+
+                if (pixel_x >= x_min && pixel_x <= bbox.x_max &&
+                        pixel_y >= bbox.y_min && pixel_y <= bbox.y_max)
+                    {
+                        RCLCPP_INFO(this->get_logger(), "x_pixel=%d , y_pixel=%d", pixel_x, pixel_y);
+
+        
+                    }
             }
+
         }
+
     }
 
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr subscription_;
@@ -307,6 +321,7 @@ private:
     std::shared_ptr<message_filters::Synchronizer<SyncPolicy>> sync_;
 
     std::vector<BoundingBox> bounding_boxes;
+    geometry_msgs::msg::PoseArray pose_array;
 
     int width_;
     int height_;
