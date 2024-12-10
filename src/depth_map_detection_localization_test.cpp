@@ -188,6 +188,10 @@ private:
     void sync_callback(const sensor_msgs::msg::PointCloud2::ConstSharedPtr pointcloud_msg,
                   const yolov8_msgs::msg::DetectionArray::ConstSharedPtr detection_msg)
     {
+          // Define the center of the depth map
+        int center_x = width_ / 2;
+        int center_y = height_ / 2;
+        
         // RCLCPP_INFO(this->get_logger(), "Received synchronized messages!");
 
         geometry_msgs::msg::PoseArray detected_object_poses;
@@ -245,6 +249,9 @@ private:
         // Final filtered cloud combines both Y ranges
         *filtered_cloud = *y_neg_filtered + *y_pos_filtered;
 
+        //Create the detected object depth map
+        cv::Mat detected_object_depth_map_single = cv::Mat::zeros(height_, width_, CV_8UC1);
+
         // Log the number of points before and after filtering
         // RCLCPP_INFO(this->get_logger(), "Original point cloud size: %zu", pcl_cloud->size());
         // RCLCPP_INFO(this->get_logger(), "Filtered point cloud size: %zu", filtered_cloud->size());
@@ -275,8 +282,11 @@ private:
 
             for (const auto& point : filtered_cloud->points)
             {
-                int pixel_x = x_center + static_cast<int>(ceil(point.y * scale_) * -1);
-                int pixel_y = y_center + static_cast<int>(ceil(point.x * scale_) * -1);
+                int pixel_x = center_x + static_cast<int>(ceil(point.y * scale_) * -1);
+                int pixel_y = center_y + static_cast<int>(ceil(point.x * scale_) * -1);
+
+                // Normalize depth value (x) to 0-255
+                int depth_value = std::clamp(static_cast<int>(point.z * 255 / MaxDepth_), 0, 255);
 
                 // RCLCPP_INFO(this->get_logger(), "x_pixel=%d , y_pixel=%d", pixel_x, pixel_y);
 
@@ -288,12 +298,14 @@ private:
                         // RCLCPP_INFO(this->get_logger(), "x_pixel=%d , y_pixel=%d", pixel_x, pixel_y); 
                         //RCLCPP_INFO(this->get_logger(), "x =%f , y =%f ,z=%f", point.x, point.y, point.z); 
 
+                        // Depth map for points within bounding boxes
+                        detected_object_depth_map_single.at<uint8_t>(pixel_y, pixel_x) = 255 - depth_value;
+                        
                         // Accumulate point coordinates
                         sum_x += point.x;
                         sum_y += point.y;
                         sum_z += point.z;
                         point_count++;
-
                 }
             }  
 
@@ -311,11 +323,25 @@ private:
                 object_pose.orientation.z = 0.0;
                 object_pose.orientation.w = 1.0;
 
-                detected_object_poses.poses.push_back(object_pose);  
-            }
+                detected_object_poses.poses.push_back(object_pose);
+                    
+            }            
         }
 
         detected_object_pose_publisher_->publish(detected_object_poses);
+        // Convert single-channel depth map to 3-channel image
+        cv::Mat detected_object_depth_map;
+        cv::cvtColor(detected_object_depth_map_single, detected_object_depth_map, cv::COLOR_GRAY2BGR);
+
+        // Convert the depth map to a ROS image message
+        sensor_msgs::msg::Image::SharedPtr detected_object_image_msg = 
+            cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", detected_object_depth_map).toImageMsg();
+
+        // Set the header to match the point cloud message
+        detected_object_image_msg->header = pointcloud_msg->header;
+
+        // Publish the detected object depth map
+        detected_object_publisher_->publish(*detected_object_image_msg);
 
     }
 
