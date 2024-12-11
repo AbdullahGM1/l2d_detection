@@ -70,6 +70,58 @@ public:
 
 private:
 
+    // method to handle filtering
+    pcl::PointCloud<pcl::PointXYZ>::Ptr filterPointCloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr& input_cloud) 
+    {
+        pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr temp_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+
+        // Z-axis filtering (depth)
+        pcl::PassThrough<pcl::PointXYZ> pass_z;
+        pass_z.setInputCloud(input_cloud);
+        pass_z.setFilterFieldName("z");
+        pass_z.setFilterLimits(MinDepth_, MaxDepth_);
+        pass_z.filter(*temp_cloud);
+
+        // X-axis filtering - Negative and Positive ranges
+        pcl::PassThrough<pcl::PointXYZ> pass_x;
+        pass_x.setInputCloud(temp_cloud);
+        pass_x.setFilterFieldName("x");
+        
+        pcl::PointCloud<pcl::PointXYZ>::Ptr x_neg_filtered(new pcl::PointCloud<pcl::PointXYZ>);
+        pass_x.setFilterLimits(-MaxDepth_, -MinDepth_);
+        pass_x.setNegative(false);
+        pass_x.filter(*x_neg_filtered);
+
+        pcl::PointCloud<pcl::PointXYZ>::Ptr x_pos_filtered(new pcl::PointCloud<pcl::PointXYZ>);
+        pass_x.setFilterLimits(MinDepth_, MaxDepth_);
+        pass_x.setNegative(false);
+        pass_x.filter(*x_pos_filtered);
+
+        // Combine X filtered clouds
+        pcl::PointCloud<pcl::PointXYZ>::Ptr x_combined_filtered(new pcl::PointCloud<pcl::PointXYZ>);
+        *x_combined_filtered = *x_neg_filtered + *x_pos_filtered;
+
+        // Y-axis filtering - Negative and Positive ranges
+        pcl::PassThrough<pcl::PointXYZ> pass_y;
+        pass_y.setInputCloud(x_combined_filtered);
+        pass_y.setFilterFieldName("y");
+        
+        pcl::PointCloud<pcl::PointXYZ>::Ptr y_neg_filtered(new pcl::PointCloud<pcl::PointXYZ>);
+        pass_y.setFilterLimits(-MaxDepth_, -MinDepth_);
+        pass_y.setNegative(false);
+        pass_y.filter(*y_neg_filtered);
+
+        pcl::PointCloud<pcl::PointXYZ>::Ptr y_pos_filtered(new pcl::PointCloud<pcl::PointXYZ>);
+        pass_y.setFilterLimits(MinDepth_, MaxDepth_);
+        pass_y.setNegative(false);
+        pass_y.filter(*y_pos_filtered);
+
+        // Final filtered cloud combines both Y ranges
+        *filtered_cloud = *y_neg_filtered + *y_pos_filtered;
+        return filtered_cloud;
+    }
+
     void point_cloud_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
     {
         // Convert ROS PointCloud2 to PCL PointCloud
@@ -80,61 +132,8 @@ private:
         cv::Mat original_depth_map_single = cv::Mat::zeros(height_, width_, CV_8UC1);
         cv::Mat detected_object_depth_map_single = cv::Mat::zeros(height_, width_, CV_8UC1);
 
-        // // Apply filtering to remove far-away points
-        // pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-        // pcl::PassThrough<pcl::PointXYZ> pass;
-        // pass.setInputCloud(pcl_cloud);
-        // pass.setFilterFieldName("z");
-        // pass.setFilterLimits(MinDepth_, MaxDepth_);
-        // pass.filter(*filtered_cloud);
-
-        // Create filtered point cloud
-        pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-        pcl::PointCloud<pcl::PointXYZ>::Ptr temp_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-
-        // Z-axis filtering (depth)
-        pcl::PassThrough<pcl::PointXYZ> pass_z;
-        pass_z.setInputCloud(pcl_cloud);
-        pass_z.setFilterFieldName("z");
-        pass_z.setFilterLimits(MinDepth_, MaxDepth_);
-        pass_z.filter(*temp_cloud);
-
-        // X-axis filtering - Negative range
-        pcl::PassThrough<pcl::PointXYZ> pass_x;
-        pass_x.setInputCloud(temp_cloud);
-        pass_x.setFilterFieldName("x");
-        pass_x.setFilterLimits(-MaxDepth_, -MinDepth_);
-        pass_x.setNegative(false);  
-        pcl::PointCloud<pcl::PointXYZ>::Ptr x_neg_filtered(new pcl::PointCloud<pcl::PointXYZ>);
-        pass_x.filter(*x_neg_filtered);
-
-        // X-axis filtering - Positive range
-        pass_x.setFilterLimits(MinDepth_, MaxDepth_);
-        pass_x.setNegative(false);  // Ensure this is set
-        pcl::PointCloud<pcl::PointXYZ>::Ptr x_pos_filtered(new pcl::PointCloud<pcl::PointXYZ>);
-        pass_x.filter(*x_pos_filtered);
-
-        // Combine X filtered clouds
-        pcl::PointCloud<pcl::PointXYZ>::Ptr x_combined_filtered(new pcl::PointCloud<pcl::PointXYZ>);
-        *x_combined_filtered = *x_neg_filtered + *x_pos_filtered;
-
-        // Y-axis filtering - Negative range
-        pcl::PassThrough<pcl::PointXYZ> pass_y;
-        pass_y.setInputCloud(x_combined_filtered);
-        pass_y.setFilterFieldName("y");
-        pass_y.setFilterLimits(-MaxDepth_, -MinDepth_);
-        pass_y.setNegative(false);  
-        pcl::PointCloud<pcl::PointXYZ>::Ptr y_neg_filtered(new pcl::PointCloud<pcl::PointXYZ>);
-        pass_y.filter(*y_neg_filtered);
-
-        // Y-axis filtering - Positive range
-        pass_y.setFilterLimits(MinDepth_, MaxDepth_);
-        pass_y.setNegative(false);  
-        pcl::PointCloud<pcl::PointXYZ>::Ptr y_pos_filtered(new pcl::PointCloud<pcl::PointXYZ>);
-        pass_y.filter(*y_pos_filtered);
-
-        // Final filtered cloud combines both Y ranges
-        *filtered_cloud = *y_neg_filtered + *y_pos_filtered;
+        // Apply filtering to remove far-away points
+        auto filtered_cloud = filterPointCloud(pcl_cloud);
 
         // Optional: Log the number of points before and after filtering
         // RCLCPP_INFO(this->get_logger(), "Original point cloud size: %zu", pcl_cloud->size());
@@ -201,53 +200,8 @@ private:
         pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_cloud(new pcl::PointCloud<pcl::PointXYZ>);
         pcl::fromROSMsg(*pointcloud_msg, *pcl_cloud);
 
-        // Create filtered point cloud
-        pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-        pcl::PointCloud<pcl::PointXYZ>::Ptr temp_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-
-        // Z-axis filtering (depth)
-        pcl::PassThrough<pcl::PointXYZ> pass_z;
-        pass_z.setInputCloud(pcl_cloud);
-        pass_z.setFilterFieldName("z");
-        pass_z.setFilterLimits(MinDepth_, MaxDepth_);
-        pass_z.filter(*temp_cloud);
-
-        // X-axis filtering - Negative range
-        pcl::PassThrough<pcl::PointXYZ> pass_x;
-        pass_x.setInputCloud(temp_cloud);
-        pass_x.setFilterFieldName("x");
-        pass_x.setFilterLimits(-MaxDepth_, -MinDepth_);
-        pass_x.setNegative(false);
-        pcl::PointCloud<pcl::PointXYZ>::Ptr x_neg_filtered(new pcl::PointCloud<pcl::PointXYZ>);
-        pass_x.filter(*x_neg_filtered);
-
-        // X-axis filtering - Positive range
-        pass_x.setFilterLimits(MinDepth_, MaxDepth_);
-        pass_x.setNegative(false);
-        pcl::PointCloud<pcl::PointXYZ>::Ptr x_pos_filtered(new pcl::PointCloud<pcl::PointXYZ>);
-        pass_x.filter(*x_pos_filtered);
-
-        // Combine X filtered clouds
-        pcl::PointCloud<pcl::PointXYZ>::Ptr x_combined_filtered(new pcl::PointCloud<pcl::PointXYZ>);
-        *x_combined_filtered = *x_neg_filtered + *x_pos_filtered;
-
-        // Y-axis filtering - Negative range
-        pcl::PassThrough<pcl::PointXYZ> pass_y;
-        pass_y.setInputCloud(x_combined_filtered);
-        pass_y.setFilterFieldName("y");
-        pass_y.setFilterLimits(-MaxDepth_, -MinDepth_);
-        pass_y.setNegative(false);
-        pcl::PointCloud<pcl::PointXYZ>::Ptr y_neg_filtered(new pcl::PointCloud<pcl::PointXYZ>);
-        pass_y.filter(*y_neg_filtered);
-
-        // Y-axis filtering - Positive range
-        pass_y.setFilterLimits(MinDepth_, MaxDepth_);
-        pass_y.setNegative(false);
-        pcl::PointCloud<pcl::PointXYZ>::Ptr y_pos_filtered(new pcl::PointCloud<pcl::PointXYZ>);
-        pass_y.filter(*y_pos_filtered);
-
-        // Final filtered cloud combines both Y ranges
-        *filtered_cloud = *y_neg_filtered + *y_pos_filtered;
+        // Use the common filtering method
+        auto filtered_cloud = filterPointCloud(pcl_cloud);
 
         //Create the detected object depth map
         cv::Mat detected_object_depth_map_single = cv::Mat::zeros(height_, width_, CV_8UC1);
