@@ -40,10 +40,6 @@ public:
         RCLCPP_INFO(this->get_logger(), "Loaded Parameters: width=%d, height=%d, scale=%f, MinDepth=%f, MaxDepth=%f",
                     width_, height_, scale_, MinDepth_, MaxDepth_);
 
-        // Subscriber for PointCloud2 messages
-        subscription_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
-            "/scan/points", 10, std::bind(&PointCloudToDepthMap::point_cloud_callback, this, std::placeholders::_1));
-
         // Create subscribers using message_filters
         pointcloud_sub_.subscribe(this, "/scan/points");
         detection_sub_.subscribe(this, "/depth_map/tracking");
@@ -68,7 +64,7 @@ public:
     }
 
 private:
-    void point_cloud_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
+    void process_point_cloud(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
     {
         // Convert ROS PointCloud2 to PCL PointCloud
         pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_cloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -166,6 +162,8 @@ private:
     void sync_callback(const sensor_msgs::msg::PointCloud2::ConstSharedPtr pointcloud_msg,
                        const yolov8_msgs::msg::DetectionArray::ConstSharedPtr detection_msg)
     {
+        process_point_cloud(pointcloud_msg);
+        
         int center_x = width_ / 2;
         int center_y = height_ / 2;
 
