@@ -121,13 +121,13 @@ private:
                 {
                     int depth_value = std::clamp(static_cast<int>(point.z * 255 / MaxDepth_), 0, 255);
                     positive_depth_map_single.at<uint8_t>(pixel_y, pixel_x) = 255 - depth_value;
-                    RCLCPP_INFO(this->get_logger(), "Positive Z: pixel (%d, %d), depth_value=%d", pixel_x, pixel_y, depth_value);
+                    // RCLCPP_INFO(this->get_logger(), "Positive Z: pixel (%d, %d), depth_value=%d", pixel_x, pixel_y, depth_value);
                 }
                 else if (point.z < 0)  // Negative Z
                 {
                     int depth_value = std::clamp(static_cast<int>(-point.z * 255 / MaxDepth_), 0, 255);
                     negative_depth_map_single.at<uint8_t>(pixel_y, pixel_x) = 255 - depth_value;
-                    RCLCPP_INFO(this->get_logger(), "Negative Z: pixel (%d, %d), depth_value=%d", pixel_x, pixel_y, depth_value);
+                    // RCLCPP_INFO(this->get_logger(), "Negative Z: pixel (%d, %d), depth_value=%d", pixel_x, pixel_y, depth_value);
                 }
             }
         }
