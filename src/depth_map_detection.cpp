@@ -1,4 +1,34 @@
-//Final Code with Khaled update and sync and filtter all axis and two depth maps for (+z) and (-z)
+/*
+BSD 3-Clause License
+
+Copyright (c) 2024, Khaled Hammad Gabr, Abdallah AlMusalami
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/point_cloud2.hpp"
@@ -17,6 +47,8 @@
 #include "message_filters/subscriber.h"
 #include "message_filters/sync_policies/approximate_time.h"
 #include "message_filters/time_synchronizer.h"
+#include <pcl/filters/crop_box.h>
+#include <algorithm> 
 
 class PointCloudToDepthMap : public rclcpp::Node
 {
@@ -27,231 +59,250 @@ public:
         // Declare parameters with default values
         this->declare_parameter<int>("width", 650);
         this->declare_parameter<int>("height", 650);
-        this->declare_parameter<float>("scale", 50.0);
         this->declare_parameter<float>("MinDepth", 0.2f);
         this->declare_parameter<float>("MaxDepth", 30.0f);
 
         // Fetch parameters
         this->get_parameter("width", width_);
         this->get_parameter("height", height_);
-        this->get_parameter("scale", scale_);
         this->get_parameter("MinDepth", MinDepth_);
         this->get_parameter("MaxDepth", MaxDepth_);
 
-        // Log parameters
-        // RCLCPP_INFO(this->get_logger(), "Loaded Parameters: width=%d, height=%d, scale=%f, MinDepth=%f, MaxDepth=%f",
-        //             width_, height_, scale_, MinDepth_, MaxDepth_);
+        // Compute scale. We multiply by 4.f as a design choice 
+        // to magnify the projection in the 2D depth image.
+        float scale_w = static_cast<float>(width_) / (2.0f * MaxDepth_);
+        float scale_h = static_cast<float>(height_) / (2.0f * MaxDepth_);
+        scale_ = std::min(scale_w, scale_h) * 4.f;
 
-        // Subscriber for PointCloud2 messages
+        RCLCPP_INFO(
+            get_logger(),
+            "Parameters: width=%d, height=%d, scale=%.2f, MinDepth=%.2f, MaxDepth=%.2f",
+            width_, height_, scale_, MinDepth_, MaxDepth_);
+
+        // 1) Simple subscriber to build + publish the "full" depth map.
         subscription_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
-            "/observer/lidar_points", 10, std::bind(&PointCloudToDepthMap::point_cloud_callback, this, std::placeholders::_1));
+            "/observer/lidar_points", 10,
+            std::bind(&PointCloudToDepthMap::point_cloud_callback, this, std::placeholders::_1));
 
-        // Create subscribers using message_filters
+        // 2) message_filters subscribers for synchronized callback (pointcloud + detections).
         pointcloud_sub_.subscribe(this, "/observer/lidar_points");
         detection_sub_.subscribe(this, "/tracking");
 
         // Create synchronization policy
         sync_ = std::make_shared<message_filters::Synchronizer<SyncPolicy>>(
             SyncPolicy(10), pointcloud_sub_, detection_sub_);
+        sync_->registerCallback(
+            std::bind(&PointCloudToDepthMap::sync_callback, this,
+                      std::placeholders::_1, std::placeholders::_2));
 
-        // Register callback
-        sync_->registerCallback(std::bind(&PointCloudToDepthMap::sync_callback, this, std::placeholders::_1, std::placeholders::_2));
+        // Publishers
+        original_publisher_ =
+            this->create_publisher<sensor_msgs::msg::Image>("/depth_map", 10);
 
-        // Publisher for original depth map
-        original_publisher_ = this->create_publisher<sensor_msgs::msg::Image>("/depth_map", 10);
+        detected_object_publisher_ =
+            this->create_publisher<sensor_msgs::msg::Image>("/detected_object_depth_map", 10);
 
-        // Publisher for detected object depth map
-        detected_object_publisher_ = this->create_publisher<sensor_msgs::msg::Image>("/detected_object_depth_map", 10);
-
-        // Publisher for detected object poses
-        detected_object_pose_publisher_ = this->create_publisher<geometry_msgs::msg::PoseArray>("/detected_object_depthmap_pose", 10);
+        detected_object_pose_publisher_ =
+            this->create_publisher<geometry_msgs::msg::PoseArray>("/detected_object_depthmap_pose", 10);
 
         RCLCPP_INFO(this->get_logger(), "PointCloud to Depth Map Node has been started.");
     }
 
 private:
-    void point_cloud_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
+    //--------------------------------------------------------------------------
+    // Helper function to project a PCL point's (X,Y) into 2D pixel coordinates,
+    //--------------------------------------------------------------------------
+    std::pair<int, int> projectToPixel(const pcl::PointXYZ &pt) const
     {
-            
-        // Convert ROS PointCloud2 to PCL PointCloud
-        pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-        pcl::fromROSMsg(*msg, *pcl_cloud);
+        // center_x, center_y
+        int cx = width_ / 2;
+        int cy = height_ / 2;
 
-        // Filter the point cloud 
-        pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud = filter_point_cloud(pcl_cloud);
+        // invert the sign on Y and X to match original approach.
+        int pixel_x = cx - static_cast<int>(std::round(pt.y * scale_));
+        int pixel_y = cy - static_cast<int>(std::round(pt.x * scale_));
 
-        // Create depth maps (+Z) & (-Z)
-        cv::Mat positive_depth_map_single = cv::Mat::zeros(height_, width_, CV_8UC1);
-        cv::Mat negative_depth_map_single = cv::Mat::zeros(height_, width_, CV_8UC1);
-        create_depth_map(filtered_cloud, positive_depth_map_single, negative_depth_map_single);
-
-        // Convert the single-channel depth maps to 3-channel images
-        cv::Mat positive_depth_map, negative_depth_map;
-        cv::cvtColor(positive_depth_map_single, positive_depth_map, cv::COLOR_GRAY2BGR);
-        cv::cvtColor(negative_depth_map_single, negative_depth_map, cv::COLOR_GRAY2BGR);
-
-        // Combine the images horizontally
-        cv::Mat combined_depth_map;
-        cv::hconcat(positive_depth_map, negative_depth_map, combined_depth_map);
-
-        // Convert the combined depth map to a ROS Image message
-        auto combined_image_msg = cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", combined_depth_map).toImageMsg();
-
-        // Add timestamp and frame information to the header
-        combined_image_msg->header = msg->header;
-
-        // Publish the combined image
-        original_publisher_->publish(*combined_image_msg);
+        return std::make_pair(pixel_x, pixel_y);
     }
 
-    void create_depth_map(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud, cv::Mat& positive_depth_map_single, cv::Mat& negative_depth_map_single)
+    //--------------------------------------------------------------------------
+    // Helper to fill two single-channel images for +Z and -Z from a filtered cloud.
+    //--------------------------------------------------------------------------
+    void fillDepthImages(const pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud,
+                         cv::Mat &pos_z_image,
+                         cv::Mat &neg_z_image) const
     {
-        int center_x = width_ / 2;
-        int center_y = height_ / 2;
-
-        for (const auto& point : cloud->points)
+        // pos_z_image and neg_z_image must be CV_8UC1, initialized to zeros.
+        for (const auto &point : cloud->points)
         {
-            int pixel_x = center_x + static_cast<int>(ceil(point.y * scale_) * -1);
-            int pixel_y = center_y + static_cast<int>(ceil(point.x * scale_) * -1);
+            // Project (x, y) into pixel coords
+            auto [px, py] = projectToPixel(point);
 
-            // Check if pixel coordinates are within bounds
-            if (pixel_x >= 0 && pixel_x < width_ && pixel_y >= 0 && pixel_y < height_)
+            // Check bounds
+            if (px < 0 || px >= width_ || py < 0 || py >= height_)
+                continue;
+
+            if (point.z > 0.0f)  // +Z
             {
-                if (point.z > 0)  // Positive Z
-                {
-                    int depth_value = std::clamp(static_cast<int>(point.z * 255 / MaxDepth_), 0, 255);
-                    positive_depth_map_single.at<uint8_t>(pixel_y, pixel_x) = 255 - depth_value;
-                    // RCLCPP_INFO(this->get_logger(), "Positive Z: pixel (%d, %d), depth_value=%d", pixel_x, pixel_y, depth_value);
-                }
-                else if (point.z < 0)  // Negative Z
-                {
-                    int depth_value = std::clamp(static_cast<int>(-point.z * 255 / MaxDepth_), 0, 255);
-                    negative_depth_map_single.at<uint8_t>(pixel_y, pixel_x) = 255 - depth_value;
-                    // RCLCPP_INFO(this->get_logger(), "Negative Z: pixel (%d, %d), depth_value=%d", pixel_x, pixel_y, depth_value);
-                }
+                int depth_value = std::clamp(
+                    static_cast<int>((point.z / MaxDepth_) * 255), 0, 255);
+
+                // Invert grayscale (closer = brighter)
+                pos_z_image.at<uint8_t>(py, px) = static_cast<uint8_t>(255 - depth_value);
+            }
+            else if (point.z < 0.0f)  // -Z
+            {
+                // For negative z, consider the magnitude (-point.z)
+                int depth_value = std::clamp(
+                    static_cast<int>((-point.z / MaxDepth_) * 255), 0, 255);
+
+                neg_z_image.at<uint8_t>(py, px) = static_cast<uint8_t>(255 - depth_value);
             }
         }
     }
 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr filter_point_cloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr& input_cloud)
+    //--------------------------------------------------------------------------
+    // subscription callback to publish a "full" depth map (no bounding boxes).
+    //--------------------------------------------------------------------------
+    void point_cloud_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
     {
-        pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-        pcl::PointCloud<pcl::PointXYZ>::Ptr temp_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+        // Convert ROS PointCloud2 -> PCL
+        pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::fromROSMsg(*msg, *pcl_cloud);
 
-         // Z-axis filtering - Positive range
-        pcl::PassThrough<pcl::PointXYZ> pass_z_positive;
-        pass_z_positive.setInputCloud(input_cloud);
-        pass_z_positive.setFilterFieldName("z");
-        pass_z_positive.setFilterLimits(MinDepth_, MaxDepth_);
-        pass_z_positive.filter(*temp_cloud);
+        // Filter
+        pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud = filter_point_cloud(pcl_cloud);
 
-        // Create a new cloud for combined results
-        pcl::PointCloud<pcl::PointXYZ>::Ptr combined_z_filtered(new pcl::PointCloud<pcl::PointXYZ>);
-        *combined_z_filtered += *temp_cloud;
+        // Create single-channel images for +Z and -Z
+        cv::Mat pos_z_img(height_, width_, CV_8UC1, cv::Scalar(0));
+        cv::Mat neg_z_img(height_, width_, CV_8UC1, cv::Scalar(0));
 
-        // Z-axis filtering - Negative range
-        // pcl::PassThrough<pcl::PointXYZ> pass_z_negative;
-        // pass_z_negative.setInputCloud(input_cloud);
-        // pass_z_negative.setFilterFieldName("z");
-        // pass_z_negative.setFilterLimits(-MaxDepth_, -MinDepth_);
-        // pass_z_negative.setNegative(false);
-        // pass_z_negative.filter(*temp_cloud);
+        // Fill depth images
+        fillDepthImages(filtered_cloud, pos_z_img, neg_z_img);
 
-        // *combined_z_filtered += *temp_cloud;
+        // Convert to 3-channel BGR for visualization
+        cv::Mat pos_bgr, neg_bgr;
+        cv::cvtColor(pos_z_img, pos_bgr, cv::COLOR_GRAY2BGR);
+        cv::cvtColor(neg_z_img, neg_bgr, cv::COLOR_GRAY2BGR);
 
-        // X-axis filtering - Negative range
-        pcl::PassThrough<pcl::PointXYZ> pass_x;
-        pass_x.setInputCloud(combined_z_filtered);
-        pass_x.setFilterFieldName("x");
-        pass_x.setFilterLimits(-MaxDepth_, -MinDepth_);
-        pass_x.setNegative(false);
-        pcl::PointCloud<pcl::PointXYZ>::Ptr x_neg_filtered(new pcl::PointCloud<pcl::PointXYZ>);
-        pass_x.filter(*x_neg_filtered);
+        // Combine horizontally
+        cv::Mat combined;
+        cv::hconcat(pos_bgr, neg_bgr, combined);
 
-        // X-axis filtering - Positive range
-        pass_x.setFilterLimits(MinDepth_, MaxDepth_);
-        pass_x.setNegative(false);
-        pcl::PointCloud<pcl::PointXYZ>::Ptr x_pos_filtered(new pcl::PointCloud<pcl::PointXYZ>);
-        pass_x.filter(*x_pos_filtered);
+        // Convert to ROS message
+        auto combined_image_msg =
+            cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", combined).toImageMsg();
 
-        // Combine X filtered clouds
-        pcl::PointCloud<pcl::PointXYZ>::Ptr x_combined_filtered(new pcl::PointCloud<pcl::PointXYZ>);
-        *x_combined_filtered = *x_neg_filtered + *x_pos_filtered;
+        // Preserve timestamp/frame_id
+        combined_image_msg->header = msg->header;
 
-        // Y-axis filtering - Negative range
-        pcl::PassThrough<pcl::PointXYZ> pass_y;
-        pass_y.setInputCloud(x_combined_filtered);
-        pass_y.setFilterFieldName("y");
-        pass_y.setFilterLimits(-MaxDepth_, -MinDepth_);
-        pass_y.setNegative(false);
-        pcl::PointCloud<pcl::PointXYZ>::Ptr y_neg_filtered(new pcl::PointCloud<pcl::PointXYZ>);
-        pass_y.filter(*y_neg_filtered);
-
-        // Y-axis filtering - Positive range
-        pass_y.setFilterLimits(MinDepth_, MaxDepth_);
-        pass_y.setNegative(false);
-        pcl::PointCloud<pcl::PointXYZ>::Ptr y_pos_filtered(new pcl::PointCloud<pcl::PointXYZ>);
-        pass_y.filter(*y_pos_filtered);
-
-        // Final filtered cloud combines both Y ranges
-        *filtered_cloud = *y_neg_filtered + *y_pos_filtered;
-
-        return filtered_cloud;
-
+        // Publish
+        original_publisher_->publish(*combined_image_msg);
     }
 
-    void sync_callback(const sensor_msgs::msg::PointCloud2::ConstSharedPtr pointcloud_msg,
-                       const yolov8_msgs::msg::DetectionArray::ConstSharedPtr detection_msg)
+    //--------------------------------------------------------------------------
+    // Filtering logic: CropBox, then pass-through on Z to keep z >= MinDepth or z <= -MinDepth
+    //--------------------------------------------------------------------------
+    pcl::PointCloud<pcl::PointXYZ>::Ptr filter_point_cloud(
+        const pcl::PointCloud<pcl::PointXYZ>::Ptr &input_cloud) const
     {
-        
-        int center_x = width_ / 2;
-        int center_y = height_ / 2;
+        // 1) CropBox: clamp to [-MaxDepth_, +MaxDepth_] in X/Y/Z
+        pcl::CropBox<pcl::PointXYZ> box_filter;
+        box_filter.setInputCloud(input_cloud);
+        box_filter.setMin(Eigen::Vector4f(-MaxDepth_, -MaxDepth_, -MaxDepth_, 1.0f));
+        box_filter.setMax(Eigen::Vector4f(+MaxDepth_, +MaxDepth_, +MaxDepth_, 1.0f));
 
+        pcl::PointCloud<pcl::PointXYZ>::Ptr temp_cropped(new pcl::PointCloud<pcl::PointXYZ>);
+        box_filter.filter(*temp_cropped);
+
+        // 2) Keep z >= MinDepth_ or z <= -MinDepth_
+        pcl::PointCloud<pcl::PointXYZ>::Ptr z_positive(new pcl::PointCloud<pcl::PointXYZ>);
+        {
+            pcl::PassThrough<pcl::PointXYZ> pass;
+            pass.setInputCloud(temp_cropped);
+            pass.setFilterFieldName("z");
+            pass.setFilterLimits(MinDepth_, MaxDepth_);
+            pass.filter(*z_positive);
+        }
+
+        pcl::PointCloud<pcl::PointXYZ>::Ptr z_negative(new pcl::PointCloud<pcl::PointXYZ>);
+        {
+            pcl::PassThrough<pcl::PointXYZ> pass;
+            pass.setInputCloud(temp_cropped);
+            pass.setFilterFieldName("z");
+            pass.setFilterLimits(-MaxDepth_, -MinDepth_);
+            pass.filter(*z_negative);
+        }
+
+        // Combine
+        pcl::PointCloud<pcl::PointXYZ>::Ptr final_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+        *final_cloud += *z_positive;
+        *final_cloud += *z_negative;
+
+        return final_cloud;
+    }
+
+    //--------------------------------------------------------------------------
+    // Synchronized callback: (PointCloud2 + YOLO detections).
+    //--------------------------------------------------------------------------
+    void sync_callback(
+        const sensor_msgs::msg::PointCloud2::ConstSharedPtr pointcloud_msg,
+        const yolov8_msgs::msg::DetectionArray::ConstSharedPtr detection_msg)
+    {
+        // Prepare PoseArray
         geometry_msgs::msg::PoseArray detected_object_poses;
         detected_object_poses.header = pointcloud_msg->header;
 
+        // Convert ROS -> PCL
         pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_cloud(new pcl::PointCloud<pcl::PointXYZ>);
         pcl::fromROSMsg(*pointcloud_msg, *pcl_cloud);
 
+        // Filter
         pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud = filter_point_cloud(pcl_cloud);
 
-        cv::Mat positive_depth_map_single = cv::Mat::zeros(height_, width_, CV_8UC1);
-        cv::Mat negative_depth_map_single = cv::Mat::zeros(height_, width_, CV_8UC1);
+        // Prepare single-channel images
+        cv::Mat pos_z_img(height_, width_, CV_8UC1, cv::Scalar(0));
+        cv::Mat neg_z_img(height_, width_, CV_8UC1, cv::Scalar(0));
 
-        for (const auto& bbox : detection_msg->detections)
+        for (const auto &bbox : detection_msg->detections)
         {
             double x_center = bbox.bbox.center.position.x;
             double y_center = bbox.bbox.center.position.y;
-            double width = bbox.bbox.size.x;
-            double height = bbox.bbox.size.y;
+            double box_w = bbox.bbox.size.x;
+            double box_h = bbox.bbox.size.y;
 
-            double x_min = x_center - width / 2.0;
-            double x_max = x_center + width / 2.0;
-            double y_min = y_center - height / 2.0;
-            double y_max = y_center + height / 2.0;
+            double x_min = x_center - (box_w / 2.0);
+            double x_max = x_center + (box_w / 2.0);
+            double y_min = y_center - (box_h / 2.0);
+            double y_max = y_center + (box_h / 2.0);
 
             double sum_x = 0.0, sum_y = 0.0, sum_z = 0.0;
             int point_count = 0;
 
-            for (const auto& point : filtered_cloud->points)
+            // Iterate over the filtered cloud to see which points fall within the bounding box
+            for (const auto &point : filtered_cloud->points)
             {
-                int pixel_x = center_x + static_cast<int>(ceil(point.y * scale_) * -1);
-                int pixel_y = center_y + static_cast<int>(ceil(point.x * scale_) * -1);
+                auto [px, py] = projectToPixel(point);
 
-                if (pixel_x >= x_min && pixel_x <= x_max &&
-                    pixel_y >= y_min && pixel_y <= y_max)
+                // Check if pixel is within the bounding box range
+                if (px >= x_min && px <= x_max &&
+                    py >= y_min && py <= y_max)
                 {
-                    if (point.z > 0) // Positive Z-axis
+                    // Mark the depth on the images
+                    if (point.z > 0.0f)
                     {
-                        int depth_value = std::clamp(static_cast<int>(point.z * 255 / MaxDepth_), 0, 255);
-                        positive_depth_map_single.at<uint8_t>(pixel_y, pixel_x) = 255 - depth_value;
+                        int depth_val = std::clamp(
+                            static_cast<int>((point.z / MaxDepth_) * 255), 0, 255);
+                        pos_z_img.at<uint8_t>(py, px) = static_cast<uint8_t>(255 - depth_val);
                     }
-                    else if (point.z < 0) // Negative Z-axis
+                    else if (point.z < 0.0f)
                     {
-                        int depth_value = std::clamp(static_cast<int>(-point.z * 255 / MaxDepth_), 0, 255);
-                        negative_depth_map_single.at<uint8_t>(pixel_y, pixel_x) = 255 - depth_value;
+                        int depth_val = std::clamp(
+                            static_cast<int>((-point.z / MaxDepth_) * 255), 0, 255);
+                        neg_z_img.at<uint8_t>(py, px) = static_cast<uint8_t>(255 - depth_val);
                     }
 
+                    // Accumulate for pose
                     sum_x += point.x;
                     sum_y += point.y;
                     sum_z += point.z;
@@ -259,52 +310,66 @@ private:
                 }
             }
 
+            // If we found any points for this detection, compute the average position
             if (point_count > 0)
             {
                 geometry_msgs::msg::Pose object_pose;
                 object_pose.position.x = sum_x / point_count;
                 object_pose.position.y = sum_y / point_count;
                 object_pose.position.z = sum_z / point_count;
+
+                // Identity orientation
                 object_pose.orientation.x = 0.0;
                 object_pose.orientation.y = 0.0;
                 object_pose.orientation.z = 0.0;
                 object_pose.orientation.w = 1.0;
 
                 detected_object_poses.poses.push_back(object_pose);
+            }
         }
+
+        // Publish the poses
+        detected_object_pose_publisher_->publish(detected_object_poses);
+
+        // Convert single-channel images to BGR
+        cv::Mat pos_bgr, neg_bgr, combined;
+        cv::cvtColor(pos_z_img, pos_bgr, cv::COLOR_GRAY2BGR);
+        cv::cvtColor(neg_z_img, neg_bgr, cv::COLOR_GRAY2BGR);
+        cv::hconcat(pos_bgr, neg_bgr, combined);
+
+        // Convert to ROS image
+        auto detected_object_image_msg =
+            cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", combined).toImageMsg();
+        detected_object_image_msg->header = pointcloud_msg->header;
+
+        detected_object_publisher_->publish(*detected_object_image_msg);
     }
 
-    detected_object_pose_publisher_->publish(detected_object_poses);
-
-    cv::Mat positive_depth_map, negative_depth_map, combined_depth_map;
-    cv::cvtColor(positive_depth_map_single, positive_depth_map, cv::COLOR_GRAY2BGR);
-    cv::cvtColor(negative_depth_map_single, negative_depth_map, cv::COLOR_GRAY2BGR);
-
-    cv::hconcat(positive_depth_map, negative_depth_map, combined_depth_map);
-
-    auto detected_object_image_msg = cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", combined_depth_map).toImageMsg();
-    detected_object_image_msg->header = pointcloud_msg->header;
-
-    detected_object_publisher_->publish(*detected_object_image_msg);
-    }
-
+    //--------------------------------------------------------------------------
+    // Member variables
+    //--------------------------------------------------------------------------
+    // 1) subscription for full cloud → depth map
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr subscription_;
+
+    // 2) Synchronized subscribers + policy
+    message_filters::Subscriber<sensor_msgs::msg::PointCloud2> pointcloud_sub_;
+    message_filters::Subscriber<yolov8_msgs::msg::DetectionArray> detection_sub_;
+
+    using SyncPolicy = message_filters::sync_policies::ApproximateTime<
+        sensor_msgs::msg::PointCloud2,
+        yolov8_msgs::msg::DetectionArray>;
+
+    std::shared_ptr<message_filters::Synchronizer<SyncPolicy>> sync_;
+
+    // Publishers
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr original_publisher_;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr detected_object_publisher_;
     rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr detected_object_pose_publisher_;
 
-    message_filters::Subscriber<sensor_msgs::msg::PointCloud2> pointcloud_sub_;
-    message_filters::Subscriber<yolov8_msgs::msg::DetectionArray> detection_sub_;
-
-    typedef message_filters::sync_policies::ApproximateTime<
-        sensor_msgs::msg::PointCloud2,
-        yolov8_msgs::msg::DetectionArray>
-        SyncPolicy;
-    std::shared_ptr<message_filters::Synchronizer<SyncPolicy>> sync_;
-
+    // Parameters
     int width_;
     int height_;
-    float scale_;
+    float scale_;    
     float MinDepth_;
     float MaxDepth_;
 };
@@ -312,7 +377,6 @@ private:
 int main(int argc, char *argv[])
 {
     rclcpp::init(argc, argv);
-
     auto node = std::make_shared<PointCloudToDepthMap>();
     rclcpp::spin(node);
     rclcpp::shutdown();
