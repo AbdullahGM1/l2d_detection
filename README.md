@@ -69,7 +69,7 @@ Before running the package, modify the launch files in `ros2_depth_map_detection
 
 1. **🖼️ Depth Map Parameters**:
 ```python
-'width': 650, 'height': 650, 'scale': 50, 
+'width': 650, 'height': 650, 
 ```
 
 2. **📏 Point Cloud Range**:
