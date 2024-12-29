@@ -12,7 +12,7 @@ def generate_launch_description():
         executable='depth_map_detection_localization',  
         name='point_cloud_to_depth_map',
         parameters=[
-            {'width': 650, 'height': 650, 'scale': 50.0, 
+            {'width': 650, 'height': 650,
             'MinDepth': 0.2, 'MaxDepth': 30.0} 
         ],
         remappings=[
