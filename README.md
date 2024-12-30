@@ -78,8 +78,7 @@ Before running the package, modify the launch files in `ros2_depth_map_detection
 ```
 3. **📏 Point Cloud Range**:
 ```python
-{'width': 650, 'height': 650, 'ScaleVector': 4.0,
-'MinDepth': 0.2, 'MaxDepth': 30.0}
+'MinDepth': 0.2, 'MaxDepth': 30.0
 ```
 4. **🔗 Topic Names**:
 ```python
@@ -129,6 +128,7 @@ ros2 launch ros2_depth_map_detection_localization_cpp depth_map_detection_locali
 |----------------|------|---------|-------------|
 | `width` | Integer | 650 | Width of generated depth map |
 | `height` | Integer | 650 | Height of generated depth map |
+| `ScaleVector` | Float | 4.0 | The Scale Vector of generated depth map |
 | `min_depth` | Float | 0.2 | Minimum depth range (meters) |
 | `max_depth` | Float | 30.0 | Maximum depth range (meters) |
 | `model_path` | String | "" | Path to YOLO model file |
