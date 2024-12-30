@@ -284,8 +284,10 @@ private:
             {
                 auto [px, py] = projectToPixel(point);
 
+                int px_combine = (point.z < 0.0f) ? px + width_: px;
+
                 // Check if pixel is within the bounding box range
-                if (px >= x_min && px <= x_max &&
+                if (px_combine >= x_min && px_combine <= x_max &&
                     py >= y_min && py <= y_max)
                 {
                     // Mark the depth on the images
