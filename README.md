@@ -33,6 +33,7 @@ This ROS2 package provides a robust solution for converting point cloud data int
 - **Detected Object Point Cloud Streaming**: Publishes points within bounding boxes as distinct point clouds
 - **Multi-Object Detection and Localization**: Simultaneously detects and estimates positions for multiple objects in real-time
 - **ROS2 Integration**: Seamless compatibility with ROS2 robotics ecosystem
+- **360-Degree Depth Mapping**: Generates dual depth maps for both positive (+) and negative (-) z-axis orientations, enabling comprehensive 360-degree environmental coverage and object detection capabilities
 
 ## 🛠️ Installation
 
