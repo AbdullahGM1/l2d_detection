@@ -61,23 +61,25 @@ public:
         this->declare_parameter<int>("height", 650);
         this->declare_parameter<float>("MinDepth", 0.2f);
         this->declare_parameter<float>("MaxDepth", 30.0f);
+        this->declare_parameter<float>("ScaleVector", 4.f);
 
         // Fetch parameters
         this->get_parameter("width", width_);
         this->get_parameter("height", height_);
         this->get_parameter("MinDepth", MinDepth_);
         this->get_parameter("MaxDepth", MaxDepth_);
+        this->get_parameter("ScaleVector", ScaleVector_);
 
         // Compute scale. We multiply by 4.f as a design choice 
         // to magnify the projection in the 2D depth image.
         float scale_w = static_cast<float>(width_) / (2.0f * MaxDepth_);
         float scale_h = static_cast<float>(height_) / (2.0f * MaxDepth_);
-        scale_ = std::min(scale_w, scale_h) * 4.f;
+        scale_ = std::min(scale_w, scale_h) * ScaleVector_;
 
         RCLCPP_INFO(
             get_logger(),
             "Parameters: width=%d, height=%d, scale=%.2f, MinDepth=%.2f, MaxDepth=%.2f",
-            width_, height_, scale_, MinDepth_, MaxDepth_);
+            width_, height_, ScaleVector_, MinDepth_, MaxDepth_);
 
         // 1) Simple subscriber to build + publish the "full" depth map.
         subscription_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
@@ -374,6 +376,7 @@ private:
     float scale_;    
     float MinDepth_;
     float MaxDepth_;
+    float ScaleVector_;
 };
 
 int main(int argc, char *argv[])
