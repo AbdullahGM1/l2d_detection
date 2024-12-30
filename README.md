@@ -73,10 +73,10 @@ Before running the package, modify the launch files in `ros2_depth_map_detection
 'width': 650, 'height': 650, 
 ```
 
-2. **📏 Point Cloud Range**:
+2. **📏 Point Cloud Range and the Scale Vector**:
 ```python
-'min_depth': 0.2, 'max_depth': 30.0
-```
+{'width': 650, 'height': 650, 'ScaleVector': 4.0,
+'MinDepth': 0.2, 'MaxDepth': 30.0} ```
 
 3. **🔗 Topic Names**:
 ```python
