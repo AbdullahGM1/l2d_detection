@@ -81,12 +81,12 @@ public:
 
         // 1) Simple subscriber to build + publish the "full" depth map.
         subscription_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
-            "/observer/lidar_points", 10,
+            "/scan/points", 10,
             std::bind(&PointCloudToDepthMap::point_cloud_callback, this, std::placeholders::_1));
 
         // 2) message_filters subscribers for synchronized callback (pointcloud + detections).
-        pointcloud_sub_.subscribe(this, "/observer/lidar_points");
-        detection_sub_.subscribe(this, "/tracking");
+        pointcloud_sub_.subscribe(this, "/scan/points");
+        detection_sub_.subscribe(this, "/depth_map/tracking");
 
         // Create synchronization policy
         sync_ = std::make_shared<message_filters::Synchronizer<SyncPolicy>>(
