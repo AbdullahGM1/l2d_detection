@@ -107,6 +107,34 @@ colcon build --packages-select ros2_depth_map_detection_localization_cpp
 ros2 launch ros2_depth_map_detection_localization_cpp depth_map_detection_localization_yolo.launch.py
 ```
 
+## 🔌 Node Details
+
+### Subscribed Topics
+| Topic Name | Message Type | Description | Rate |
+|------------|--------------|-------------|------|
+| `/scan/points` | `sensor_msgs/PointCloud2` | Input point cloud data from LiDAR sensor | 10-30 Hz |
+| `/yolo/tracking` | `vision_msgs/Detection2DArray` | YOLO detection and tracking results | 10-30 Hz |
+
+### Published Topics
+| Topic Name | Message Type | Description | Rate |
+|------------|--------------|-------------|------|
+| `/depth_map` | `sensor_msgs/Image` | Original depth map generated from point cloud | 10-30 Hz |
+| `/depth_map_objects` | `sensor_msgs/Image` | Depth map highlighting detected objects | 10-30 Hz |
+| `/object_poses` | `geometry_msgs/PoseArray` | 3D positions of detected objects | 10-30 Hz |
+| `/object_pointclouds` | `sensor_msgs/PointCloud2` | Point clouds of detected objects | 10-30 Hz |
+
+### Parameters
+| Parameter Name | Type | Default | Description |
+|----------------|------|---------|-------------|
+| `width` | Integer | 650 | Width of generated depth map |
+| `height` | Integer | 650 | Height of generated depth map |
+| `min_depth` | Float | 0.2 | Minimum depth range (meters) |
+| `max_depth` | Float | 30.0 | Maximum depth range (meters) |
+| `model_path` | String | "" | Path to YOLO model file |
+| `threshold` | Float | 0.5 | Detection confidence threshold |
+| `device` | String | "cuda:0" | Computing device (GPU/CPU) |
+
+
 ## 🤝 Contributing
 
 Feel free to contribute to this project by creating pull requests or opening issues! 🌟 Your input is welcome and appreciated! 💡
@@ -115,3 +143,4 @@ Feel free to contribute to this project by creating pull requests or opening iss
 - Always ensure your sensor configurations match the launch file parameters
 - Check ROS2 and YOLO setup before running the package
 - Optimize model and detection thresholds for your specific use case
+
