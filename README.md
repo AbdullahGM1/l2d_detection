@@ -30,10 +30,10 @@ This ROS2 package provides a robust solution for converting point cloud data int
 - **Original Depth Map Generation**: Converts the lidar point clouds to depth maps representing the entire scene
 - **Object-specific Depth Map**: Isolates and enhances depth data specifically for detected objects, based on YOLOv8 outputs
 - **3D Position Estimation**: Calculates and publishes the average pose of detected objects based on depth data
-- **Detected Object Point Cloud Streaming**: Publishes points within bounding boxes as distinct point clouds
 - **Multi-Object Detection and Localization**: Simultaneously detects and estimates positions for multiple objects in real-time
-- **ROS2 Integration**: Seamless compatibility with ROS2 robotics ecosystem
 - **360-Degree Depth Mapping**: Generates dual depth maps for both positive (+) and negative (-) z-axis orientations, enabling comprehensive 360-degree environmental coverage and object detection capabilities
+
+- **ROS2 Integration**: Seamless compatibility with ROS2 robotics ecosystem
 
 ## 🛠️ Installation
 
@@ -121,7 +121,6 @@ ros2 launch ros2_depth_map_detection_localization_cpp depth_map_detection_locali
 | `/depth_map` | `sensor_msgs/Image` | Original depth map generated from point cloud | 10-30 Hz |
 | `/depth_map_objects` | `sensor_msgs/Image` | Depth map highlighting detected objects | 10-30 Hz |
 | `/object_poses` | `geometry_msgs/PoseArray` | 3D positions of detected objects | 10-30 Hz |
-| `/object_pointclouds` | `sensor_msgs/PointCloud2` | Point clouds of detected objects | 10-30 Hz |
 
 ### Parameters
 | Parameter Name | Type | Default | Description |
