@@ -47,6 +47,11 @@ This ROS2 package provides a robust solution for converting point cloud data int
 ```bash
 sudo apt-get update
 sudo apt-get install libpcl-dev libopencv-dev
+sudo apt-get update && sudo apt-get install -y \
+    ros-humble-cv-bridge \
+    ros-humble-pcl-conversions \
+    ros-humble-pcl-ros \
+    ros-humble-message-filters
 ```
 
 ### 📂 Clone the Repository
