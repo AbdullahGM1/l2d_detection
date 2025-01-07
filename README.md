@@ -75,23 +75,24 @@ Before running the package, modify the launch files in `ros2_depth_map_detection
 
 1. **🖼️ Depth Map Parameters**:
 ```python
-'width': 650, 'height': 650, 
+'width': 650, 'height': 650
 ```
-
-2. **📏 Point Cloud Range**:
+2. **📏 Depth Map Scale Vector**
 ```python
-'min_depth': 0.2, 'max_depth': 30.0
+'ScaleVector': 4.0
 ```
-
-3. **🔗 Topic Names**:
+3. **📏 Point Cloud Range**:
+```python
+'MinDepth': 0.2, 'MaxDepth': 30.0
+```
+4. **🔗 Topic Names**:
 ```python
 remappings=[
     ('/scan/points', '/change/it/to/your/topic'),  # Lidar point cloud topic
     ('/yolo/tracking', '/change/it/to/your/topic')  # YOLOv8 tracking topic
 ]
 ```
-
-4. **🎯 YOLO Parameters**:
+5. **🎯 YOLO Parameters**:
 ```python
 launch_arguments={
     'model': '/path/to/model.pt',
@@ -132,6 +133,7 @@ ros2 launch ros2_depth_map_detection_localization_cpp depth_map_detection_locali
 |----------------|------|---------|-------------|
 | `width` | Integer | 650 | Width of generated depth map |
 | `height` | Integer | 650 | Height of generated depth map |
+| `ScaleVector` | Float | 4.0 | The Scale Vector of generated depth map |
 | `min_depth` | Float | 0.2 | Minimum depth range (meters) |
 | `max_depth` | Float | 30.0 | Maximum depth range (meters) |
 | `model_path` | String | "" | Path to YOLO model file |
