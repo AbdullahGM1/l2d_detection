@@ -30,15 +30,16 @@ This ROS2 package provides a robust solution for converting point cloud data int
 - **Original Depth Map Generation**: Converts the lidar point clouds to depth maps representing the entire scene
 - **Object-specific Depth Map**: Isolates and enhances depth data specifically for detected objects, based on YOLOv8 outputs
 - **3D Position Estimation**: Calculates and publishes the average pose of detected objects based on depth data
-- **Detected Object Point Cloud Streaming**: Publishes points within bounding boxes as distinct point clouds
 - **Multi-Object Detection and Localization**: Simultaneously detects and estimates positions for multiple objects in real-time
+- **360-Degree Depth Mapping**: Generates dual depth maps for both positive (+) and negative (-) z-axis orientations, enabling comprehensive 360-degree environmental coverage and object detection capabilities
+
 - **ROS2 Integration**: Seamless compatibility with ROS2 robotics ecosystem
 
 ## 🛠️ Installation
 
 ### 📋 Prerequisites
 - **🤖 ROS2 Humble**: [Installation Guide](https://docs.ros.org/en/humble/Installation.html)
-- **🕵️ YOLOvX ROS**: [Setup Instructions](https://github.com/mgonzs13/yolov8_ros)
+- **🕵️ YOLO ROS**: [Setup Instructions](https://github.com/AbdullahGM1/yolo_ros)
 - **💻 C++ Compiler**: GCC 8 or newer
 - **📚 Required Libraries**: PCL, OpenCV, and other ROS2 dependencies
 
@@ -46,6 +47,11 @@ This ROS2 package provides a robust solution for converting point cloud data int
 ```bash
 sudo apt-get update
 sudo apt-get install libpcl-dev libopencv-dev
+sudo apt-get update && sudo apt-get install -y \
+    ros-humble-cv-bridge \
+    ros-humble-pcl-conversions \
+    ros-humble-pcl-ros \
+    ros-humble-message-filters
 ```
 
 ### 📂 Clone the Repository
@@ -69,23 +75,24 @@ Before running the package, modify the launch files in `ros2_depth_map_detection
 
 1. **🖼️ Depth Map Parameters**:
 ```python
-'width': 650, 'height': 650, 'scale': 50, 
+'width': 650, 'height': 650
 ```
-
-2. **📏 Point Cloud Range**:
+2. **📏 Depth Map Scale Vector**
 ```python
-'min_depth': 0.2, 'max_depth': 30.0
+'ScaleVector': 4.0
 ```
-
-3. **🔗 Topic Names**:
+3. **📏 Point Cloud Range**:
+```python
+'MinDepth': 0.2, 'MaxDepth': 30.0
+```
+4. **🔗 Topic Names**:
 ```python
 remappings=[
     ('/scan/points', '/change/it/to/your/topic'),  # Lidar point cloud topic
     ('/yolo/tracking', '/change/it/to/your/topic')  # YOLOv8 tracking topic
 ]
 ```
-
-4. **🎯 YOLO Parameters**:
+5. **🎯 YOLO Parameters**:
 ```python
 launch_arguments={
     'model': '/path/to/model.pt',
@@ -106,6 +113,34 @@ colcon build --packages-select ros2_depth_map_detection_localization_cpp
 ros2 launch ros2_depth_map_detection_localization_cpp depth_map_detection_localization_yolo.launch.py
 ```
 
+## 🔌 Node Details
+
+### Subscribed Topics
+| Topic Name | Message Type | Description | Rate |
+|------------|--------------|-------------|------|
+| `/scan/points` | `sensor_msgs/PointCloud2` | Input point cloud data from LiDAR sensor | 10-30 Hz |
+| `/yolo/tracking` | `vision_msgs/Detection2DArray` | YOLO detection and tracking results | 10-30 Hz |
+
+### Published Topics
+| Topic Name | Message Type | Description | Rate |
+|------------|--------------|-------------|------|
+| `/depth_map` | `sensor_msgs/Image` | Original depth map generated from point cloud | 10-30 Hz |
+| `/depth_map_objects` | `sensor_msgs/Image` | Depth map highlighting detected objects | 10-30 Hz |
+| `/object_poses` | `geometry_msgs/PoseArray` | 3D positions of detected objects | 10-30 Hz |
+
+### Parameters
+| Parameter Name | Type | Default | Description |
+|----------------|------|---------|-------------|
+| `width` | Integer | 650 | Width of generated depth map |
+| `height` | Integer | 650 | Height of generated depth map |
+| `ScaleVector` | Float | 4.0 | The Scale Vector of generated depth map |
+| `min_depth` | Float | 0.2 | Minimum depth range (meters) |
+| `max_depth` | Float | 30.0 | Maximum depth range (meters) |
+| `model_path` | String | "" | Path to YOLO model file |
+| `threshold` | Float | 0.5 | Detection confidence threshold |
+| `device` | String | "cuda:0" | Computing device (GPU/CPU) |
+
+
 ## 🤝 Contributing
 
 Feel free to contribute to this project by creating pull requests or opening issues! 🌟 Your input is welcome and appreciated! 💡
@@ -114,3 +149,4 @@ Feel free to contribute to this project by creating pull requests or opening iss
 - Always ensure your sensor configurations match the launch file parameters
 - Check ROS2 and YOLO setup before running the package
 - Optimize model and detection thresholds for your specific use case
+

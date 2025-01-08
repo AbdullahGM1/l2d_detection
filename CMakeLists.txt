@@ -1,6 +1,6 @@
 
 cmake_minimum_required(VERSION 3.8)
-project(depth_map_detection)
+project(ros2_depth_map_detection_localization_cpp)
 
 cmake_policy(SET CMP0074 NEW)
 
@@ -17,46 +17,37 @@ find_package(OpenCV REQUIRED)
 find_package(PCL REQUIRED COMPONENTS common io filters)
 find_package(pcl_conversions REQUIRED)
 find_package(geometry_msgs REQUIRED)
-find_package(yolov8_msgs REQUIRED)
+find_package(yolo_msgs REQUIRED)
 find_package(message_filters REQUIRED)
 
 # Include directories
 include_directories(${PCL_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
 
 # Add executable for the main depth map node
-add_executable(depth_map_detection src/depth_map_detection.cpp)
-
-# Add executable for the test node
-# add_executable(depth_map_detection_localization_test src/depth_map_detection_localization_test.cpp)
+add_executable(depth_map_detection_localization src/depth_map_detection_localization.cpp)
 
 # Link libraries
-target_link_libraries(depth_map_detection 
+target_link_libraries(depth_map_detection_localization 
   ${PCL_LIBRARIES} 
   ${OpenCV_LIBS} 
 )
 
-# target_link_libraries(depth_map_detection_localization_test 
-#   ${PCL_LIBRARIES} 
-#   ${OpenCV_LIBS} 
-# )
-
 ament_target_dependencies(
-  depth_map_detection
+  depth_map_detection_localization
   rclcpp
   sensor_msgs
   cv_bridge
   OpenCV
   PCL
   pcl_conversions
-  yolov8_msgs
+  yolo_msgs
   geometry_msgs
   message_filters
 )
 
-
 # Install the targets
 install(TARGETS 
-depth_map_detection
+  depth_map_detection_localization
   DESTINATION lib/${PROJECT_NAME})
 
 # Install launch files

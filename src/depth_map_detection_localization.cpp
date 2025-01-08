@@ -40,7 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pcl/filters/passthrough.h"
 #include "cv_bridge/cv_bridge.h"
 #include "opencv2/opencv.hpp"
-#include "yolov8_msgs/msg/detection_array.hpp"
+#include "yolo_msgs/msg/detection_array.hpp"
 #include <vector>
 #include <stdexcept>
 #include "pcl/filters/extract_indices.h"
@@ -61,32 +61,34 @@ public:
         this->declare_parameter<int>("height", 650);
         this->declare_parameter<float>("MinDepth", 0.2f);
         this->declare_parameter<float>("MaxDepth", 30.0f);
+        this->declare_parameter<float>("ScaleVector", 4.f);
 
         // Fetch parameters
         this->get_parameter("width", width_);
         this->get_parameter("height", height_);
         this->get_parameter("MinDepth", MinDepth_);
         this->get_parameter("MaxDepth", MaxDepth_);
+        this->get_parameter("ScaleVector", ScaleVector_);
 
         // Compute scale. We multiply by 4.f as a design choice 
         // to magnify the projection in the 2D depth image.
         float scale_w = static_cast<float>(width_) / (2.0f * MaxDepth_);
         float scale_h = static_cast<float>(height_) / (2.0f * MaxDepth_);
-        scale_ = std::min(scale_w, scale_h) * 4.f;
+        scale_ = std::min(scale_w, scale_h) * ScaleVector_;
 
         RCLCPP_INFO(
             get_logger(),
             "Parameters: width=%d, height=%d, scale=%.2f, MinDepth=%.2f, MaxDepth=%.2f",
-            width_, height_, scale_, MinDepth_, MaxDepth_);
+            width_, height_, ScaleVector_, MinDepth_, MaxDepth_);
 
         // 1) Simple subscriber to build + publish the "full" depth map.
         subscription_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
-            "/observer/lidar_points", 10,
+            "/scan/points", 10,
             std::bind(&PointCloudToDepthMap::point_cloud_callback, this, std::placeholders::_1));
 
         // 2) message_filters subscribers for synchronized callback (pointcloud + detections).
-        pointcloud_sub_.subscribe(this, "/observer/lidar_points");
-        detection_sub_.subscribe(this, "/tracking");
+        pointcloud_sub_.subscribe(this, "/scan/points");
+        detection_sub_.subscribe(this, "/depth_map/tracking");
 
         // Create synchronization policy
         sync_ = std::make_shared<message_filters::Synchronizer<SyncPolicy>>(
@@ -247,7 +249,7 @@ private:
     //--------------------------------------------------------------------------
     void sync_callback(
         const sensor_msgs::msg::PointCloud2::ConstSharedPtr pointcloud_msg,
-        const yolov8_msgs::msg::DetectionArray::ConstSharedPtr detection_msg)
+        const yolo_msgs::msg::DetectionArray::ConstSharedPtr detection_msg)
     {
         // Prepare PoseArray
         geometry_msgs::msg::PoseArray detected_object_poses;
@@ -284,8 +286,10 @@ private:
             {
                 auto [px, py] = projectToPixel(point);
 
+                int px_combine = (point.z < 0.0f) ? px + width_: px;
+
                 // Check if pixel is within the bounding box range
-                if (px >= x_min && px <= x_max &&
+                if (px_combine >= x_min && px_combine <= x_max &&
                     py >= y_min && py <= y_max)
                 {
                     // Mark the depth on the images
@@ -353,11 +357,11 @@ private:
 
     // 2) Synchronized subscribers + policy
     message_filters::Subscriber<sensor_msgs::msg::PointCloud2> pointcloud_sub_;
-    message_filters::Subscriber<yolov8_msgs::msg::DetectionArray> detection_sub_;
+    message_filters::Subscriber<yolo_msgs::msg::DetectionArray> detection_sub_;
 
     using SyncPolicy = message_filters::sync_policies::ApproximateTime<
         sensor_msgs::msg::PointCloud2,
-        yolov8_msgs::msg::DetectionArray>;
+        yolo_msgs::msg::DetectionArray>;
 
     std::shared_ptr<message_filters::Synchronizer<SyncPolicy>> sync_;
 
@@ -372,6 +376,7 @@ private:
     float scale_;    
     float MinDepth_;
     float MaxDepth_;
+    float ScaleVector_;
 };
 
 int main(int argc, char *argv[])
