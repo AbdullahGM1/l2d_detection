@@ -21,15 +21,15 @@ def generate_launch_description():
         ]
     )
 
-    yolov8_launch = IncludeLaunchDescription(
+    yolo_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
             PathJoinSubstitution([
-                FindPackageShare('yolov8_bringup'),
+                FindPackageShare('yolo_bringup'),
                 'launch/yolov11.launch.py'
             ])
         ]),
         launch_arguments={
-            'model': '/home/user/shared_volume/ros2_ws/src/d2dtracker_drone_detector/config/test9.pt',  # Path to your YOLOv8 model
+            'model': '/home/user/shared_volume/ros2_ws/src/d2dtracker_drone_detector/config/test9.pt',  # Path to your yolo model
             'threshold': '0.5',
             'input_image_topic': '/depth_map',
             'namespace': 'depth_map',
@@ -39,5 +39,5 @@ def generate_launch_description():
 
     return LaunchDescription([
         depth_map_detection_localization_node,
-        yolov8_launch
+        yolo_launch
     ])

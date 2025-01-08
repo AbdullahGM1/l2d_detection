@@ -17,7 +17,7 @@ find_package(OpenCV REQUIRED)
 find_package(PCL REQUIRED COMPONENTS common io filters)
 find_package(pcl_conversions REQUIRED)
 find_package(geometry_msgs REQUIRED)
-find_package(yolov8_msgs REQUIRED)
+find_package(yolo_msgs REQUIRED)
 find_package(message_filters REQUIRED)
 
 # Include directories
@@ -40,7 +40,7 @@ ament_target_dependencies(
   OpenCV
   PCL
   pcl_conversions
-  yolov8_msgs
+  yolo_msgs
   geometry_msgs
   message_filters
 )

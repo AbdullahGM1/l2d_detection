@@ -40,7 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pcl/filters/passthrough.h"
 #include "cv_bridge/cv_bridge.h"
 #include "opencv2/opencv.hpp"
-#include "yolov8_msgs/msg/detection_array.hpp"
+#include "yolo_msgs/msg/detection_array.hpp"
 #include <vector>
 #include <stdexcept>
 #include "pcl/filters/extract_indices.h"
@@ -249,7 +249,7 @@ private:
     //--------------------------------------------------------------------------
     void sync_callback(
         const sensor_msgs::msg::PointCloud2::ConstSharedPtr pointcloud_msg,
-        const yolov8_msgs::msg::DetectionArray::ConstSharedPtr detection_msg)
+        const yolo_msgs::msg::DetectionArray::ConstSharedPtr detection_msg)
     {
         // Prepare PoseArray
         geometry_msgs::msg::PoseArray detected_object_poses;
@@ -357,11 +357,11 @@ private:
 
     // 2) Synchronized subscribers + policy
     message_filters::Subscriber<sensor_msgs::msg::PointCloud2> pointcloud_sub_;
-    message_filters::Subscriber<yolov8_msgs::msg::DetectionArray> detection_sub_;
+    message_filters::Subscriber<yolo_msgs::msg::DetectionArray> detection_sub_;
 
     using SyncPolicy = message_filters::sync_policies::ApproximateTime<
         sensor_msgs::msg::PointCloud2,
-        yolov8_msgs::msg::DetectionArray>;
+        yolo_msgs::msg::DetectionArray>;
 
     std::shared_ptr<message_filters::Synchronizer<SyncPolicy>> sync_;
 
