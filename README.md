@@ -39,7 +39,7 @@ This ROS2 package provides a robust solution for converting point cloud data int
 
 ### 📋 Prerequisites
 - **🤖 ROS2 Humble**: [Installation Guide](https://docs.ros.org/en/humble/Installation.html)
-- **🕵️ YOLOvX ROS**: [Setup Instructions](https://github.com/mgonzs13/yolov8_ros)
+- **🕵️ YOLO ROS**: [Setup Instructions](https://github.com/AbdullahGM1/yolo_ros)
 - **💻 C++ Compiler**: GCC 8 or newer
 - **📚 Required Libraries**: PCL, OpenCV, and other ROS2 dependencies
 
