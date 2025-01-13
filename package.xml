@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>ros2_depth_map_detection_localization_cpp</name>
+  <name>l2d_detection</name>
   <version>1.0.0</version>
   <description>Converting Point Cloud Points to a Depth Map Using PCL, and Detect an Object and Localize Using the Depth Map</description>
   <maintainer email="agm.musalami@gmail.com">AbdullahGM1</maintainer>

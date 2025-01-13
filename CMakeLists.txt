@@ -1,6 +1,6 @@
 
 cmake_minimum_required(VERSION 3.8)
-project(ros2_depth_map_detection_localization_cpp)
+project(l2d_detection)
 
 cmake_policy(SET CMP0074 NEW)
 
