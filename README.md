@@ -82,7 +82,7 @@ Before running the package, modify the launch files in `depth_detection.launch.p
 ```python
 remappings=[
     ('/scan/points', '/change/it/to/your/topic'),  # Lidar point cloud topic
-    ('/yolo/tracking', '/change/it/to/your/topic')  # YOLOv8 tracking topic
+    ('/yolo/tracking', '/change/it/to/your/topic')  # YOLOv11 tracking topic
 ]
 ```
 5. **🎯 YOLO Parameters**:
@@ -102,9 +102,22 @@ colcon build --packages-select l2d_detection
 source install/setup.bash
 ```
 
-### 🏃 Run the Node
+### Run the Launch File
 ```bash
 ros2 launch l2d_detection depth_detection.launch.py
+```
+
+> ### ⚠️ Important Notes
+* If you want to run the package with simulation, you need to follow the steps in the following repo [SMART-Track-sim-setup.](https://github.com/AbdullahGM1/SMART-Track-sim-setup./tree/main)
+* If you want to run just the `lidar_camera_fusion_with_detection.cpp` node without the simulation, you need to comment these parts in the launch file:
+```py
+    # ld.add_action(gz_launch)
+    # ld.add_action(map2pose_tf_node)
+    # ld.add_action(cam_tf_node)
+    # ld.add_action(lidar_tf_node)
+    # ld.add_action(ros_gz_bridge)
+    # ld.add_action(mavros_launch)
+    # ld.add_action(rviz_node)
 ```
 
 ## 🔌 Node Details
