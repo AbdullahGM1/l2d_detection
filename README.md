@@ -57,21 +57,14 @@ sudo apt-get update && sudo apt-get install -y \
 ### 📂 Clone the Repository
 ```bash
 cd ~/ros2_ws/src
-git clone https://github.com/AbdullahGM1/ros2_depth_map_detection_localization_cpp.git
-```
-
-### 🏗️ Build the Package
-```bash
-cd ~/ros2_ws
-colcon build --packages-select ros2_depth_map_detection_localization_cpp
-source install/setup.bash
+git clone https://github.com/AbdullahGM1/l2d_detection.git
 ```
 
 ## 🚀 Usage
 
 ### ⚙️ Modifying the Launch File
 
-Before running the package, modify the launch files in `ros2_depth_map_detection_localization_cpp/launch`:
+Before running the package, modify the launch files in `depth_detection.launch.py/launch`:
 
 1. **🖼️ Depth Map Parameters**:
 ```python
@@ -105,12 +98,13 @@ launch_arguments={
 ### 🔨 Build the Package
 ```bash
 cd ~/ros2_ws
-colcon build --packages-select ros2_depth_map_detection_localization_cpp
+colcon build --packages-select l2d_detection
+source install/setup.bash
 ```
 
 ### 🏃 Run the Node
 ```bash
-ros2 launch ros2_depth_map_detection_localization_cpp depth_map_detection_localization_yolo.launch.py
+ros2 launch l2d_detection depth_detection.launch.py
 ```
 
 ## 🔌 Node Details
