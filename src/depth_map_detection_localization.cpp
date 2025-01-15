@@ -1,7 +1,7 @@
 /*
 BSD 3-Clause License
 
-Copyright (c) 2024, Khaled Hammad Gabr, Abdallah AlMusalami
+Copyright (c) 2024, Abdallah AlMusalami, Khaled Hammad Gabr
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
